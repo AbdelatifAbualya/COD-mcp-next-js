@@ -1,6 +1,6 @@
 // Utility functions for Enhanced COD Studio
 
-import { ComplexityAnalysis, CodSettings, ComplexityLevel, VerificationDepth } from '../types';
+import { ComplexityAnalysis, Settings, ComplexityLevel, VerificationDepth } from '../types';
 
 /**
  * Analyze message complexity and determine optimal processing approach
@@ -81,7 +81,7 @@ export function analyzeMessageComplexity(message: string): ComplexityAnalysis {
 /**
  * Get adaptive settings based on message complexity
  */
-export function getAdaptiveSettings(message: string, currentSettings: CodSettings): CodSettings {
+export function getAdaptiveSettings(message: string, currentSettings: Settings): Settings {
   if (currentSettings.reasoningEnhancement !== 'adaptive') {
     return currentSettings;
   }

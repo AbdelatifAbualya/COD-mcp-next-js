@@ -3,7 +3,7 @@ import { streamText, tool } from 'ai';
 import { fireworks } from '@ai-sdk/fireworks';
 import { z } from 'zod';
 
-// MCP Tool Definitions
+// CoD Analysis Tool
 const codAnalysisTool = tool({
   description: 'Perform systematic Chain of Deliberation analysis on complex problems',
   parameters: z.object({
@@ -14,8 +14,7 @@ const codAnalysisTool = tool({
   execute: async ({ problem, complexity_level, word_limit }) => {
     const steps = complexity_level === 'research' ? 6 : complexity_level === 'advanced' ? 5 : 4;
     
-    return `
-🧠 **Chain of Deliberation Analysis**
+    return `🧠 **Chain of Deliberation Analysis**
 
 **Problem**: ${problem}
 **Complexity**: ${complexity_level}
@@ -30,11 +29,11 @@ const codAnalysisTool = tool({
 ${steps > 4 ? '5. **Alternative Approaches**: Exploring different methods' : ''}
 ${steps > 5 ? '6. **Verification & Validation**: Deep correctness checking' : ''}
 
-*Ready to proceed with detailed ${complexity_level} analysis...*
-    `;
+*Ready to proceed with detailed ${complexity_level} analysis...*`;
   }
 });
 
+// Memory Store Tool
 const memoryStoreTool = tool({
   description: 'Store important information in categorized memory system',
   parameters: z.object({
@@ -46,8 +45,7 @@ const memoryStoreTool = tool({
     const timestamp = new Date().toISOString();
     const memoryId = `mem_${Date.now()}`;
     
-    return `
-🧠 **Memory Stored Successfully**
+    return `🧠 **Memory Stored Successfully**
 
 **ID**: ${memoryId}
 **Category**: ${category}
@@ -56,22 +54,21 @@ const memoryStoreTool = tool({
 
 **Stored Content**: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}
 
-*Memory added to enhanced memory system for future reference and context building.*
-    `;
+*Memory added to enhanced memory system for future reference and context building.*`;
   }
 });
 
+// Verification Tool
 const verificationTool = tool({
   description: 'Perform deep verification of reasoning and solutions',
   parameters: z.object({
     solution: z.string().describe('The solution or reasoning to verify'),
     verification_depth: z.enum(['basic', 'standard', 'deep', 'research']).describe('Depth of verification'),
   }),
-  execute: async ({ solution, verification_depth }) => {
+  execute: async ({ verification_depth }) => {
     const checks = verification_depth === 'research' ? 8 : verification_depth === 'deep' ? 6 : 4;
     
-    return `
-🔍 **Verification Analysis Complete**
+    return `🔍 **Verification Analysis Complete**
 
 **Verification Depth**: ${verification_depth}
 **Checks Performed**: ${checks}
@@ -87,11 +84,11 @@ ${checks > 6 ? '✅ **Peer Review Simulation**: Expert perspective applied' : ''
 ${checks > 7 ? '✅ **Research Standards**: Academic rigor maintained' : ''}
 
 **Confidence Level**: High (${verification_depth} verification passed)
-*Solution verified and ready for implementation.*
-    `;
+*Solution verified and ready for implementation.*`;
   }
 });
 
+// Research Tool
 const researchTool = tool({
   description: 'Conduct comprehensive research analysis',
   parameters: z.object({
@@ -102,8 +99,7 @@ const researchTool = tool({
   execute: async ({ topic, focus_areas, depth }) => {
     const methodologies = depth === 'comprehensive' ? 5 : depth === 'detailed' ? 3 : 2;
     
-    return `
-📚 **Enhanced Research Analysis**
+    return `📚 **Enhanced Research Analysis**
 
 **Topic**: ${topic}
 **Focus Areas**: ${focus_areas.join(', ')}
@@ -119,22 +115,19 @@ ${methodologies > 4 ? '📈 **Longitudinal Study**: Historical and trend analysi
 **Key Research Areas**:
 ${focus_areas.map(area => `- ${area}`).join('\n')}
 
-*Comprehensive research framework activated for ${depth} analysis...*
-    `;
+*Comprehensive research framework activated for ${depth} analysis...*`;
   }
 });
 
-// TAVILY MCP Tool - Web Search and Browsing
+// Tavily Search Tool
 const tavilySearchTool = tool({
   description: 'Search the web and browse current information using Tavily API for real-time research',
   parameters: z.object({
     query: z.string().describe('Search query or topic to research'),
-    search_depth: z.enum(['basic', 'advanced']).default('basic').describe('Depth of search - basic for quick results, advanced for comprehensive'),
-    max_results: z.number().min(1).max(10).default(5).describe('Maximum number of search results to return'),
-    include_domains: z.array(z.string()).optional().describe('Specific domains to include in search'),
-    exclude_domains: z.array(z.string()).optional().describe('Specific domains to exclude from search'),
+    search_depth: z.enum(['basic', 'advanced']).default('basic').describe('Depth of search'),
+    max_results: z.number().min(1).max(10).default(5).describe('Maximum number of search results'),
   }),
-  execute: async ({ query, search_depth, max_results, include_domains, exclude_domains }) => {
+  execute: async ({ query, search_depth = 'basic', max_results = 5 }) => {
     try {
       const tavilyApiKey = process.env.TAVILY_API_KEY;
       if (!tavilyApiKey) {
@@ -149,8 +142,6 @@ const tavilySearchTool = tool({
         include_answer: true,
         include_images: false,
         include_raw_content: false,
-        ...(include_domains && { include_domains }),
-        ...(exclude_domains && { exclude_domains })
       };
 
       console.log('🔍 Tavily Search initiated:', query);
@@ -170,12 +161,10 @@ const tavilySearchTool = tool({
       const data = await response.json();
       console.log('✅ Tavily Search completed');
 
-      // Format the results
       const results = data.results || [];
       const answer = data.answer || '';
 
-      return `
-🌐 **Tavily Web Search Results**
+      return `🌐 **Tavily Web Search Results**
 
 **Query**: ${query}
 **Search Depth**: ${search_depth}
@@ -193,13 +182,7 @@ ${results.map((result: any, index: number) => `
 ---
 `).join('\n')}
 
-${data.follow_up_questions ? `
-🤔 **Related Questions**:
-${data.follow_up_questions.map((q: string) => `- ${q}`).join('\n')}
-` : ''}
-
-*Real-time web search completed with Tavily MCP*
-      `;
+*Real-time web search completed with Tavily MCP*`;
 
     } catch (error) {
       console.error('Tavily Search Error:', error);
@@ -229,10 +212,10 @@ export async function POST(req: NextRequest) {
 - Chain of Deliberation (CoD) systematic reasoning
 - Enhanced memory and context retention
 - Advanced research and analysis capabilities
-- Agentic tool integration for complex tasks
+- Real-time web search with Tavily integration
 
 🛠️ **AVAILABLE MCP TOOLS**:
-- **cod_analysis**: For systematic Chain of Draft analysis on complex problems
+- **cod_analysis**: For systematic Chain of Deliberation analysis on complex problems
 - **memory_store**: For storing important information in categorized memory
 - **verification_analysis**: For deep verification of reasoning and solutions
 - **enhanced_research**: For comprehensive research with multiple methodologies
@@ -240,7 +223,7 @@ export async function POST(req: NextRequest) {
 
 🎯 **REASONING APPROACH**:
 1. **Assess Complexity**: Determine if the query needs CoD methodology
-2. **Check Information Needs**: Use Tavily search for current/real-time information
+2. **Check Information Needs**: Use tavily_search for current/real-time information
 3. **Select Tools**: Choose appropriate MCP tools for the task
 4. **Execute Analysis**: Use systematic reasoning with tool support
 5. **Verify Results**: Apply verification when appropriate
@@ -273,7 +256,7 @@ Always strive for systematic, thorough analysis while maintaining clarity and pr
       maxTokens: 4000,
     });
 
-    console.log('Fireworks API call initiated with MCP tools (including Tavily)');
+    console.log('Fireworks API call initiated with MCP tools');
     return result.toDataStreamResponse();
     
   } catch (error) {
