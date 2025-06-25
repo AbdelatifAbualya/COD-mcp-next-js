@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "name": "enhanced-cod-studio-mcp",
+  "builds": [
+    {
+      "src": "next.config.ts",
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ],
+  "env": {
+    "NEXT_PUBLIC_APP_NAME": "Enhanced COD Studio with MCP",
+    "NEXT_PUBLIC_APP_VERSION": "1.0.0",
+    "MCP_VERBOSE_LOGS": "true",
+    "MCP_MAX_DURATION": "60"
+  },
+  "functions": {
+    "app/api/chat/route.ts": {
+      "maxDuration": 60
+    },
+    "app/[transport]/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}

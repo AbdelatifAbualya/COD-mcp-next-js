@@ -1,0 +1,529 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { useChat } from '@ai-sdk/react';
+import { marked } from 'marked';
+import hljs from 'highlight.js';
+
+// Configure marked for better rendering
+marked.setOptions({
+  highlight: function(code: string, lang: string) {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return hljs.highlight(code, { language: lang }).value;
+      } catch (err) {
+        console.error('Highlight.js error:', err);
+      }
+    }
+    return hljs.highlightAuto(code).value;
+  },
+  breaks: true,
+  gfm: true,
+});
+
+interface CodSettings {
+  reasoningEnhancement: 'standard' | 'adaptive' | 'research';
+  verificationDepth: 'basic' | 'standard' | 'deep' | 'research';
+  wordLimit: number;
+  temperature: number;
+  maxTokens: number;
+  topP: number;
+}
+
+interface Thread {
+  id: string;
+  title: string;
+  timestamp: number;
+  messageCount: number;
+}
+
+interface MemoryItem {
+  id: string;
+  category: 'personal' | 'projects' | 'technical' | 'reflections';
+  content: string;
+  context: string;
+  timestamp: number;
+  metadata: Record<string, any>;
+}
+
+export default function EnhancedCodStudio() {
+  const [settings, setSettings] = useState<CodSettings>({
+    reasoningEnhancement: 'adaptive',
+    verificationDepth: 'standard',
+    wordLimit: 100,
+    temperature: 0.3,
+    maxTokens: 8192,
+    topP: 0.9,
+  });
+
+  // Use the AI SDK's useChat hook
+  const {
+    messages,
+    input,
+    handleInputChange,
+    handleSubmit,
+    isLoading,
+    error,
+    setMessages,
+  } = useChat({
+    api: '/api/chat',
+    body: { settings },
+    initialMessages: [{
+      id: 'welcome',
+      role: 'assistant',
+      content: `# Welcome to Enhanced CoD Studio - DeepSeek V3-0324
+
+I'm ready to help you with complex reasoning tasks using Chain of Draft methodology. You can ask me any challenging problem that requires step-by-step analysis.
+
+## Features:
+- **Advanced CoD Reasoning**: Multi-stage analysis with verification
+- **Adaptive Complexity**: Automatically adjusts to problem difficulty
+- **Research Sessions**: Organize your complex queries
+- **Memory Store**: Save important information for later recall
+
+To get started, simply type your question or problem below.`
+    }],
+  });
+
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [currentThreadId, setCurrentThreadId] = useState<string>('default');
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [memory, setMemory] = useState<MemoryItem[]>([]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  // Load persisted data
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('cod-settings');
+    if (savedSettings) {
+      setSettings(JSON.parse(savedSettings));
+    }
+
+    const savedThreads = localStorage.getItem('cod-threads');
+    if (savedThreads) {
+      setThreads(JSON.parse(savedThreads));
+    }
+
+    const savedMemory = localStorage.getItem('cod-memory');
+    if (savedMemory) {
+      setMemory(JSON.parse(savedMemory));
+    }
+  }, []);
+
+  const saveSettings = () => {
+    localStorage.setItem('cod-settings', JSON.stringify(settings));
+    setShowSettings(false);
+  };
+
+  const createNewThread = () => {
+    const newThread = {
+      id: `thread-${Date.now()}`,
+      title: `Research Session ${threads.length + 1}`,
+      timestamp: Date.now(),
+      messageCount: 0,
+    };
+
+    setThreads(prev => {
+      const updated = [...prev, newThread];
+      localStorage.setItem('cod-threads', JSON.stringify(updated));
+      return updated;
+    });
+
+    setCurrentThreadId(newThread.id);
+    setMessages([]);
+  };
+
+  const formatMessage = (content: string) => {
+    try {
+      const html = marked(content);
+      return { __html: html };
+    } catch (error) {
+      console.error('Markdown parsing error:', error);
+      return { __html: content };
+    }
+  };
+
+  const getMessageTypeClass = (role: string) => {
+    switch (role) {
+      case 'user':
+        return 'message user';
+      case 'assistant':
+        return 'message assistant';
+      case 'data':
+        return 'message tool';
+      default:
+        return 'message';
+    }
+  };
+
+  const getRoleIcon = (role: string) => {
+    switch (role) {
+      case 'user':
+        return '👤';
+      case 'assistant':
+        return '🤖';
+      case 'data':
+        return '🔧';
+      default:
+        return '💬';
+    }
+  };
+
+  const getRoleName = (role: string) => {
+    switch (role) {
+      case 'user':
+        return 'You';
+      case 'assistant':
+        return 'DeepSeek V3-0324';
+      case 'data':
+        return 'Data';
+      default:
+        return 'System';
+    }
+  };
+
+  return (
+    <div className="flex h-screen overflow-hidden">
+      {/* Sidebar */}
+      <div
+        className={`fixed md:relative inset-y-0 left-0 sidebar w-64 transform ${
+          showSidebar ? "translate-x-0" : "-translate-x-full"
+        } md:translate-x-0 transition-transform z-30 flex flex-col`}
+      >
+        <div className="p-4 flex items-center gap-2 border-b border-[#1f2937]">
+          <div className="p-2 bg-[#1e293b] rounded-md">
+            <div className="text-xl">⚡</div>
+          </div>
+          <div>
+            <h1 className="font-bold text-lg sidebar-logo">Enhanced CoD Studio</h1>
+            <div className="text-xs text-gray-400">DeepSeek V3-0324 • Advanced Reflection</div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="space-y-3 mb-6">
+            <button
+              onClick={createNewThread}
+              className="w-full py-2 px-4 bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-md text-sm sidebar-button"
+            >
+              ✨ New Research Session
+            </button>
+          </div>
+
+          {/* Threads */}
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-gray-300 mb-3">RECENT SESSIONS</h3>
+            <div className="space-y-2">
+              {threads.map((thread) => (
+                <div
+                  key={thread.id}
+                  onClick={() => setCurrentThreadId(thread.id)}
+                  className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                    currentThreadId === thread.id
+                      ? 'bg-[#1e40af]/30 border border-[#3b82f6]/30'
+                      : 'hover:bg-[#1e293b] border border-transparent'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <span className="text-[#3b82f6] mr-2">💬</span>
+                    <div>
+                      <div className="text-sm font-medium">{thread.title}</div>
+                      <div className="text-xs text-gray-400">Just now</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Memory */}
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center">
+              <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+              Memory Active
+              <span className="text-xs text-gray-400 ml-auto">{memory.length} items</span>
+            </h3>
+            <div className="text-xs text-gray-400">Storing conversations & preferences</div>
+          </div>
+
+          {/* Status */}
+          <div className="text-xs text-gray-500 space-y-1">
+            <div>Model: DeepSeek V3-0324</div>
+            <div>Mode: {settings.reasoningEnhancement}</div>
+            <div>Verification: {settings.verificationDepth}</div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+              Ready
+            </div>
+          </div>
+        </div>
+
+        {/* Export Options */}
+        <div className="p-4 border-t border-[#1f2937]">
+          <div className="text-xs text-gray-300 mb-2 uppercase">EXPORT RESEARCH</div>
+          <div className="flex gap-2">
+            <button className="flex-1 bg-[#1e293b] hover:bg-[#334155] p-2 rounded text-center">
+              <div className="text-lg mb-1">📄</div>
+              <div className="text-xs">TXT</div>
+            </button>
+            <button className="flex-1 bg-[#1e293b] hover:bg-[#334155] p-2 rounded text-center">
+              <div className="text-lg mb-1">📎</div>
+              <div className="text-xs">PDF</div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Sidebar Toggle */}
+      <button
+        onClick={() => setShowSidebar(!showSidebar)}
+        className="md:hidden fixed top-4 left-4 z-40 bg-[#1e293b] p-2 rounded-lg shadow-lg"
+      >
+        {showSidebar ? '✕' : '☰'}
+      </button>
+
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="header p-4 flex justify-between items-center">
+          <div className="header-title text-lg">Enhanced CoD Studio - DeepSeek V3-0324</div>
+          <button 
+            onClick={() => setShowSettings(true)}
+            className="settings-button"
+          >
+            Settings ⚙️
+          </button>
+        </div>
+
+        {/* Chat Messages */}
+        <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+          {messages.map((message) => (
+            <div key={message.id} className={getMessageTypeClass(message.role)}>
+              <div className="flex items-start gap-3 mb-2">
+                <span className="text-lg">{getRoleIcon(message.role)}</span>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-semibold text-sm">{getRoleName(message.role)}</span>
+                    {message.role === 'assistant' && (
+                      <span className="stage-indicator">Enhanced CoD</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="pl-8">
+                <div 
+                  className="prose prose-invert max-w-none"
+                  dangerouslySetInnerHTML={formatMessage(message.content)}
+                />
+
+                {/* Tool Invocations */}
+                {message.toolInvocations && message.toolInvocations.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {message.toolInvocations.map((tool: any, index: number) => (
+                      <div key={index} className="bg-green-900/20 border border-green-500/30 rounded p-3">
+                        <div className="text-sm font-semibold text-green-300 mb-2">
+                          🔧 Tool: {tool.toolName}
+                        </div>
+                        <pre className="text-xs text-green-200 whitespace-pre-wrap">
+                          {JSON.stringify(tool.args, null, 2)}
+                        </pre>
+                        {tool.state === 'result' && tool.result && (
+                          <div className="mt-2 pt-2 border-t border-green-500/20">
+                            <div className="text-xs text-green-300">Result:</div>
+                            <pre className="text-xs text-green-200 whitespace-pre-wrap">
+                              {JSON.stringify(tool.result, null, 2)}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {isLoading && (
+            <div className="message assistant">
+              <div className="flex items-center gap-3">
+                <span className="text-lg">🤖</span>
+                <div className="flex-1">
+                  <div className="font-semibold text-sm mb-2">DeepSeek V3-0324</div>
+                  <div className="flex items-center gap-2">
+                    <div className="loading-dots">
+                      <div className="loading-dot"></div>
+                      <div className="loading-dot"></div>
+                      <div className="loading-dot"></div>
+                    </div>
+                    <span className="text-sm text-gray-400">Reasoning with CoD methodology...</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="message bg-red-900/20 border border-red-500/30">
+              <div className="text-red-400 font-semibold mb-2">Error</div>
+              <div className="text-red-300">{error.message}</div>
+            </div>
+          )}
+        </div>
+
+        {/* Input Area */}
+        <div className="input-area p-4">
+          <form onSubmit={handleSubmit} className="flex gap-3">
+            <textarea
+              className="input-textarea flex-1 min-h-[60px] p-3"
+              value={input}
+              onChange={handleInputChange}
+              placeholder="Ask a complex research question for enhanced CoD reasoning with DeepSeek V3-0324..."
+              rows={1}
+              disabled={isLoading}
+            />
+            <button
+              type="submit"
+              disabled={isLoading || !input.trim()}
+              className="send-button h-[60px] flex items-center justify-center"
+            >
+              {isLoading ? (
+                <div className="loading-dots">
+                  <div className="loading-dot"></div>
+                  <div className="loading-dot"></div>
+                  <div className="loading-dot"></div>
+                </div>
+              ) : '➤'}
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-[#1e293b] rounded-lg shadow-xl w-full max-w-md p-6">
+            <h2 className="text-xl font-semibold mb-4">Advanced CoD Settings</h2>
+            <div className="space-y-6">
+              {/* Reasoning Enhancement */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">
+                  Reasoning Enhancement
+                </label>
+                <select
+                  value={settings.reasoningEnhancement}
+                  onChange={(e) => setSettings({...settings, reasoningEnhancement: e.target.value as any})}
+                  className="w-full bg-[#0f172a] border border-[#334155] rounded p-2 text-gray-200"
+                  title="Reasoning Enhancement"
+                >
+                  <option value="standard">Standard</option>
+                  <option value="adaptive">Adaptive</option>
+                  <option value="research">Research Grade</option>
+                </select>
+              </div>
+
+              {/* Verification Depth */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">
+                  Verification Depth
+                </label>
+                <select
+                  value={settings.verificationDepth}
+                  onChange={(e) => setSettings({...settings, verificationDepth: e.target.value as any})}
+                  className="w-full bg-[#0f172a] border border-[#334155] rounded p-2 text-gray-200"
+                  title="Verification Depth"
+                >
+                  <option value="basic">Basic</option>
+                  <option value="standard">Standard</option>
+                  <option value="deep">Deep</option>
+                  <option value="research">Research Grade</option>
+                </select>
+              </div>
+
+              {/* Word Limit */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-3">
+                  CoD Step Word Limit: {settings.wordLimit}
+                </label>
+                <input
+                  type="range"
+                  min="50"
+                  max="300"
+                  step="25"
+                  value={settings.wordLimit}
+                  onChange={(e) => setSettings({...settings, wordLimit: parseInt(e.target.value)})}
+                  className="w-full"
+                  title="Word Limit"
+                />
+              </div>
+
+              {/* Temperature */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-3">
+                  Temperature: {settings.temperature}
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={settings.temperature}
+                  onChange={(e) => setSettings({...settings, temperature: parseFloat(e.target.value)})}
+                  className="w-full"
+                  title="Temperature"
+                />
+              </div>
+
+              {/* Max Tokens */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-3">
+                  Max Tokens: {settings.maxTokens}
+                </label>
+                <input
+                  type="range"
+                  min="1000"
+                  max="16000"
+                  step="1000"
+                  value={settings.maxTokens}
+                  onChange={(e) => setSettings({...settings, maxTokens: parseInt(e.target.value)})}
+                  className="w-full"
+                  title="Max Tokens"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-8">
+              <button 
+                onClick={saveSettings} 
+                className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded py-2 px-4 flex-1"
+              >
+                Save Settings
+              </button>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="bg-[#334155] hover:bg-[#475569] text-white rounded py-2 px-4 flex-1"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Overlay for mobile sidebar */}
+      {showSidebar && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/50 z-20"
+          onClick={() => setShowSidebar(false)}
+        />
+      )}
+    </div>
+  );
+}
