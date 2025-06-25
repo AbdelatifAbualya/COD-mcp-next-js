@@ -9,12 +9,19 @@ interface MainContentProps {
 }
 
 const MainContent: React.FC<MainContentProps> = ({ onOpenSettings }) => {
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, isLoading, error, append } = useChat({
     api: '/api/chat',
     onError: (error) => {
       console.error('Chat error:', error);
     }
   });
+
+  const handleTestTavily = () => {
+    append({
+      role: 'user',
+      content: 'Use the tavily_search tool to tell me the latest news about AI.'
+    });
+  };
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -27,6 +34,12 @@ const MainContent: React.FC<MainContentProps> = ({ onOpenSettings }) => {
             <span id="modelDisplayText">DeepSeek V3-0324</span>
             <span id="adaptiveIndicator" className="hidden bg-purple-500/20 text-purple-300 text-xs px-2 py-1 rounded-full">🧠 Adaptive</span>
           </div>
+          <button onClick={handleTestTavily} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg transition">
+            <span>Test Tavily</span>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </button>
           <button id="openSettings" onClick={onOpenSettings} className="flex items-center gap-1.5 bg-dark-600 hover:bg-dark-500 text-gray-300 px-3 py-1.5 rounded-lg transition">
             <span>Settings</span>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -43,9 +56,9 @@ const MainContent: React.FC<MainContentProps> = ({ onOpenSettings }) => {
       </div>
 
       {/* Chat Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {error && (
-          <div className="bg-red-900/20 border border-red-500 text-red-200 p-4 rounded-lg mb-4">
+          <div className="bg-red-900/20 border border-red-500 text-red-200 p-4 rounded-lg mb-4 animate-slideInUp">
             <p><strong>Error:</strong> {error.message}</p>
           </div>
         )}
@@ -63,10 +76,17 @@ const MainContent: React.FC<MainContentProps> = ({ onOpenSettings }) => {
         }))} />
         
         {isLoading && (
-          <div className="bg-dark-600 rounded-lg p-4 mb-4">
-            <div className="flex items-center gap-2 text-gray-300">
-              <div className="w-4 h-4 bg-deepseek-400 rounded-full animate-pulse"></div>
-              <span>DeepSeek is thinking...</span>
+          <div className="bg-dark-600 rounded-lg p-4 mb-4 animate-fadeIn border border-dark-500">
+            <div className="flex items-center gap-3 text-gray-300">
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-deepseek-400 rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-deepseek-400 rounded-full animate-pulse [animation-delay:0.2s]"></div>
+                <div className="w-2 h-2 bg-deepseek-400 rounded-full animate-pulse [animation-delay:0.4s]"></div>
+              </div>
+              <span className="text-sm">DeepSeek is thinking...</span>
+              <div className="ml-auto">
+                <div className="w-6 h-6 border-2 border-deepseek-400 border-t-transparent rounded-full animate-spin"></div>
+              </div>
             </div>
           </div>
         )}

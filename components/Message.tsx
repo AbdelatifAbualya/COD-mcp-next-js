@@ -23,13 +23,13 @@ export function Message({ role, content, timestamp, toolInvocations, children }:
   const getMessageTypeClass = (role: string) => {
     switch (role) {
       case 'user':
-        return 'message user bg-blue-900/20 border border-blue-500/30 ml-8';
+        return 'message user bg-blue-900/20 border border-blue-500/30 rounded-lg p-4 mb-4 ml-8 shadow-lg backdrop-blur-sm';
       case 'assistant':
-        return 'message assistant bg-purple-900/20 border border-purple-500/30 mr-8';
+        return 'message assistant bg-purple-900/20 border border-purple-500/30 rounded-lg p-4 mb-4 mr-8 shadow-lg backdrop-blur-sm animate-fadeIn';
       case 'tool':
-        return 'message tool bg-green-900/20 border border-green-500/30 font-mono text-sm';
+        return 'message tool bg-green-900/20 border border-green-500/30 rounded-lg p-4 mb-4 font-mono text-sm shadow-lg backdrop-blur-sm';
       default:
-        return 'message bg-gray-900/20 border border-gray-500/30';
+        return 'message bg-gray-900/20 border border-gray-500/30 rounded-lg p-4 mb-4 shadow-lg backdrop-blur-sm';
     }
   };
 
@@ -87,21 +87,30 @@ export function Message({ role, content, timestamp, toolInvocations, children }:
 
         {/* Tool Invocations */}
         {toolInvocations && toolInvocations.length > 0 && (
-          <div className="mt-3 space-y-2">
+          <div className="mt-4 space-y-3">
             {toolInvocations.map((tool, index) => (
-              <div key={index} className="bg-green-900/20 border border-green-500/30 rounded p-3">
-                <div className="text-sm font-semibold text-green-300 mb-2">
+              <div key={index} className="bg-green-900/20 border border-green-500/30 rounded-lg p-4 animate-slideInUp">
+                <div className="text-sm font-semibold text-green-300 mb-2 flex items-center gap-2">
                   🔧 Tool: {tool.toolName}
+                  <div className="bg-green-600/20 text-green-300 text-xs px-2 py-1 rounded-full">
+                    MCP
+                  </div>
                 </div>
-                <pre className="text-xs text-green-200 whitespace-pre-wrap">
-                  {JSON.stringify(tool.args, null, 2)}
-                </pre>
+                <div className="bg-green-900/30 rounded p-3 mb-3">
+                  <div className="text-xs text-green-400 mb-1">Parameters:</div>
+                  <pre className="text-xs text-green-200 whitespace-pre-wrap overflow-x-auto">
+                    {JSON.stringify(tool.args, null, 2)}
+                  </pre>
+                </div>
                 {tool.result && (
-                  <div className="mt-2 pt-2 border-t border-green-500/20">
-                    <div className="text-xs text-green-300">Result:</div>
-                    <pre className="text-xs text-green-200 whitespace-pre-wrap">
-                      {JSON.stringify(tool.result, null, 2)}
-                    </pre>
+                  <div className="bg-green-800/20 rounded p-3 border-t border-green-500/20">
+                    <div className="text-xs text-green-300 mb-2 flex items-center gap-2">
+                      <span>Result:</span>
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    </div>
+                    <div className="text-sm text-green-100 whitespace-pre-wrap max-h-96 overflow-y-auto">
+                      {typeof tool.result === 'string' ? tool.result : JSON.stringify(tool.result, null, 2)}
+                    </div>
                   </div>
                 )}
               </div>

@@ -1,12 +1,6 @@
 {
   "version": 2,
   "name": "enhanced-cod-studio-mcp",
-  "builds": [
-    {
-      "src": "next.config.ts",
-      "use": "@vercel/next"
-    }
-  ],
   "routes": [
     {
       "src": "/(.*)",
@@ -21,9 +15,6 @@
   },
   "functions": {
     "app/api/chat/route.ts": {
-      "maxDuration": 60
-    },
-    "app/[transport]/route.ts": {
       "maxDuration": 60
     }
   }

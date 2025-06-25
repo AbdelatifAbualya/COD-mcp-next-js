@@ -241,7 +241,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
           </div>
           
           {/* Parameters Tab Content */}
-          <div id="parametersTab" className="tab-content hidden">
+          <div id="parametersTab" className={`tab-content ${activeTab === 'parametersTab' ? '' : 'hidden'}`}>
             <h3 className="text-lg font-medium mb-4 pb-2 border-b border-dark-600">DeepSeek V3-0324 Parameters</h3>
             
             <div className="flex items-center justify-between mb-5 bg-dark-600 rounded-lg p-3 border border-dark-500">
@@ -304,7 +304,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
           </div>
           
           {/* Reflection Tab */}
-          <div id="reflectionTab" className="tab-content hidden">
+          <div id="reflectionTab" className={`tab-content ${activeTab === 'reflectionTab' ? '' : 'hidden'}`}>
             <h3 className="text-lg font-medium mb-4 pb-2 border-b border-dark-600">Advanced Reflection & Verification System</h3>
             
             <div className="bg-gradient-to-r from-indigo-900/20 to-purple-900/20 border border-indigo-500/30 rounded-lg p-4 mb-6">
@@ -408,7 +408,7 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
           </div>
           
           {/* Memory Control Tab */}
-          <div id="memoryTab" className="tab-content hidden">
+          <div id="memoryTab" className={`tab-content ${activeTab === 'memoryTab' ? '' : 'hidden'}`}>
             <h3 className="text-lg font-medium mb-4 pb-2 border-b border-dark-600">Memory Control System</h3>
             
             <div className="bg-gradient-to-r from-green-900/20 to-emerald-900/20 border border-green-500/30 rounded-lg p-4 mb-6">
@@ -517,10 +517,10 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
           </div>
           
           <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-dark-600">
-            <button id="closeSettings" className="px-4 py-2 bg-dark-600 hover:bg-dark-500 text-gray-300 rounded-lg transition">
+            <button onClick={onClose} className="px-4 py-2 bg-dark-600 hover:bg-dark-500 text-gray-300 rounded-lg transition">
               Cancel
             </button>
-            <button id="saveSettings" className="px-4 py-2 deepseek-gradient hover:from-deepseek-600 hover:to-deepseek-700 text-white rounded-lg transition">
+            <button onClick={onClose} className="px-4 py-2 deepseek-gradient hover:from-deepseek-600 hover:to-deepseek-700 text-white rounded-lg transition">
               Save Settings
             </button>
           </div>

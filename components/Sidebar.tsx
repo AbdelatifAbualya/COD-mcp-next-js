@@ -1,11 +1,126 @@
-
 'use client';
 
 import React from 'react';
 
 const Sidebar = () => {
+  const handleNewSession = () => {
+    // Clear the current conversation
+    window.location.reload();
+  };
+
+  const handleDownloadTxt = () => {
+    const messages = document.querySelectorAll('.message');
+    let content = 'Enhanced CoD Studio - Research Session Export\n';
+    content += '=' + '='.repeat(50) + '\n\n';
+    content += `Exported on: ${new Date().toLocaleString()}\n`;
+    content += `Model: DeepSeek V3-0324 Enhanced CoD\n\n`;
+    
+    messages.forEach((message, index) => {
+      const role = message.querySelector('.font-semibold')?.textContent || 'Unknown';
+      const timestamp = message.querySelector('.text-xs.text-gray-500')?.textContent || '';
+      const content_text = message.querySelector('.prose')?.textContent || 
+                          message.textContent?.replace(role, '').replace(timestamp, '').trim() || '';
+      
+      content += `[${timestamp}] ${role}:\n`;
+      content += `${content_text}\n\n`;
+      content += '-' + '-'.repeat(50) + '\n\n';
+    });
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `enhanced-cod-session-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadPdf = () => {
+    // For PDF export, we'll create a formatted HTML version and open print dialog
+    const messages = document.querySelectorAll('.message');
+    let htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Enhanced CoD Studio - Research Session</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+          .header { border-bottom: 2px solid #0ea5e9; padding-bottom: 10px; margin-bottom: 20px; }
+          .message { margin-bottom: 20px; padding: 15px; border-left: 3px solid #ccc; }
+          .user { border-left-color: #3b82f6; background: #f8fafc; }
+          .assistant { border-left-color: #8b5cf6; background: #faf5ff; }
+          .role { font-weight: bold; color: #0ea5e9; margin-bottom: 5px; }
+          .timestamp { color: #666; font-size: 0.8em; }
+          .content { line-height: 1.6; }
+          pre { background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Enhanced CoD Studio - Research Session</h1>
+          <p>Exported on: ${new Date().toLocaleString()}</p>
+          <p>Model: DeepSeek V3-0324 Enhanced CoD</p>
+        </div>
+    `;
+
+    messages.forEach((message) => {
+      const role = message.querySelector('.font-semibold')?.textContent || 'Unknown';
+      const timestamp = message.querySelector('.text-xs.text-gray-500')?.textContent || '';
+      const content_text = message.querySelector('.prose')?.innerHTML || 
+                          message.textContent?.replace(role, '').replace(timestamp, '').trim() || '';
+      
+      const roleClass = role === 'You' ? 'user' : 'assistant';
+      htmlContent += `
+        <div class="message ${roleClass}">
+          <div class="role">${role} <span class="timestamp">${timestamp}</span></div>
+          <div class="content">${content_text}</div>
+        </div>
+      `;
+    });
+
+    htmlContent += '</body></html>';
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const newWindow = window.open(url, '_blank');
+    if (newWindow) {
+      newWindow.onload = () => {
+        setTimeout(() => {
+          newWindow.print();
+        }, 500);
+      };
+    }
+  };
+
+  const handleClearSession = () => {
+    if (confirm('Are you sure you want to clear this session? This action cannot be undone.')) {
+      // Clear messages from the chat
+      const messagesContainer = document.querySelector('[class*="overflow-y-auto"]');
+      if (messagesContainer) {
+        const messages = messagesContainer.querySelectorAll('.message');
+        messages.forEach(msg => msg.remove());
+      }
+      
+      // Show cleared message
+      window.location.reload();
+    }
+  };
+
+  const handleDeleteSession = () => {
+    if (confirm('Are you sure you want to delete this session? This action cannot be undone and all data will be lost.')) {
+      // Clear localStorage if any session data is stored there
+      localStorage.removeItem('enhanced-cod-session');
+      localStorage.removeItem('chat-messages');
+      
+      // Reload the page to start fresh
+      window.location.reload();
+    }
+  };
+
   return (
-    <div className="w-80 bg-gradient-to-b from-dark-700 to-dark-800 border-r border-dark-600 flex flex-col overflow-y-auto hidden md:flex shadow-2xl">
+    <div className="w-80 bg-gradient-to-b from-dark-700 to-dark-800 border-r border-dark-600 hidden md:flex flex-col overflow-y-auto shadow-2xl">
       {/* Header */}
       <div className="p-6 border-b border-dark-600/50">
         <div className="flex items-center gap-3 mb-4">
@@ -21,7 +136,7 @@ const Sidebar = () => {
         </div>
         
         {/* New Session Button */}
-        <button id="newThreadBtn" className="w-full deepseek-gradient hover:from-deepseek-600 hover:to-deepseek-700 text-white py-3 px-4 rounded-xl transition-all duration-200 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transform hover:scale-105 deepseek-glow">
+        <button onClick={handleNewSession} className="w-full deepseek-gradient hover:from-deepseek-600 hover:to-deepseek-700 text-white py-3 px-4 rounded-xl transition-all duration-200 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transform hover:scale-105 deepseek-glow">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
           </svg>
@@ -38,7 +153,7 @@ const Sidebar = () => {
               <div className="w-2 h-2 bg-deepseek-400 rounded-full animate-pulse"></div>
               <span className="text-deepseek-300 text-sm font-medium">DeepSeek V3-0324</span>
             </div>
-            <span id="modelStatus" className="text-deepseek-400 text-xs bg-deepseek-900/30 px-2 py-1 rounded-full">Active</span>
+            <span className="text-deepseek-400 text-xs bg-deepseek-900/30 px-2 py-1 rounded-full">Active</span>
           </div>
           <div className="text-deepseek-200 text-xs">Latest reasoning model with reflection</div>
         </div>
@@ -52,7 +167,7 @@ const Sidebar = () => {
               </svg>
               <span className="text-green-300 text-sm font-medium">Memory Active</span>
             </div>
-            <span id="memoryCount" className="text-green-400 text-xs bg-green-900/30 px-2 py-1 rounded-full">0 items</span>
+            <span className="text-green-400 text-xs bg-green-900/30 px-2 py-1 rounded-full">0 items</span>
           </div>
           <div className="text-green-200 text-xs">Storing conversations & preferences</div>
         </div>
@@ -62,9 +177,9 @@ const Sidebar = () => {
       <div className="flex-1 p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-medium text-gray-300 uppercase tracking-wider">Recent Sessions</h3>
-          <span id="threadCount" className="text-xs bg-dark-600 text-gray-400 px-2 py-1 rounded-full">1</span>
+          <span className="text-xs bg-dark-600 text-gray-400 px-2 py-1 rounded-full">1</span>
         </div>
-        <ul id="threadList" className="space-y-2 mb-6">
+        <ul className="space-y-2 mb-6">
           <li className="bg-dark-600/50 hover:bg-dark-600 text-deepseek-300 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 border border-dark-500/50 hover:border-deepseek-500/50">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-deepseek-500/20 rounded-lg flex items-center justify-center">
@@ -92,13 +207,13 @@ const Sidebar = () => {
         
         {/* Export Buttons */}
         <div className="grid grid-cols-2 gap-2 mb-4">
-          <button id="downloadTxtBtn" className="bg-dark-600 hover:bg-dark-500 text-gray-300 hover:text-white py-3 px-3 rounded-lg transition-all duration-200 flex flex-col items-center gap-1 border border-dark-500 hover:border-gray-500">
+          <button onClick={handleDownloadTxt} className="bg-dark-600 hover:bg-dark-500 text-gray-300 hover:text-white py-3 px-3 rounded-lg transition-all duration-200 flex flex-col items-center gap-1 border border-dark-500 hover:border-gray-500">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
             <span className="text-xs font-medium">TXT</span>
           </button>
-          <button id="downloadPdfBtn" className="bg-dark-600 hover:bg-dark-500 text-gray-300 hover:text-white py-3 px-3 rounded-lg transition-all duration-200 flex flex-col items-center gap-1 border border-dark-500 hover:border-gray-500">
+          <button onClick={handleDownloadPdf} className="bg-dark-600 hover:bg-dark-500 text-gray-300 hover:text-white py-3 px-3 rounded-lg transition-all duration-200 flex flex-col items-center gap-1 border border-dark-500 hover:border-gray-500">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
             </svg>
@@ -115,14 +230,14 @@ const Sidebar = () => {
         </div>
         
         <div className="space-y-2">
-          <button id="clearThreadBtn" className="w-full bg-dark-600 hover:bg-dark-500 text-gray-300 hover:text-white py-2.5 px-4 rounded-lg transition-all duration-200 flex items-center gap-3 border border-dark-500 hover:border-gray-500">
+          <button onClick={handleClearSession} className="w-full bg-dark-600 hover:bg-dark-500 text-gray-300 hover:text-white py-2.5 px-4 rounded-lg transition-all duration-200 flex items-center gap-3 border border-dark-500 hover:border-gray-500">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
             </svg>
             <span className="text-sm">Clear Session</span>
           </button>
           
-          <button id="deleteThreadBtn" className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-400 hover:text-red-300 py-2.5 px-4 rounded-lg transition-all duration-200 flex items-center gap-3 border border-red-600/20 hover:border-red-500/50">
+          <button onClick={handleDeleteSession} className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-400 hover:text-red-300 py-2.5 px-4 rounded-lg transition-all duration-200 flex items-center gap-3 border border-red-600/20 hover:border-red-500/50">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
             </svg>

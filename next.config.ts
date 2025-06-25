@@ -1,6 +1,4 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  serverExternalPackages: ["redis"],
-};
+const nextConfig = {};
 
 export default nextConfig;
