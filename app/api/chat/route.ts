@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { streamText, tool } from 'ai';
+import { streamText, tool, generateText } from 'ai';
 import { fireworks } from '@ai-sdk/fireworks';
 import { z } from 'zod';
 
@@ -97,25 +97,65 @@ const researchTool = tool({
     depth: z.enum(['overview', 'detailed', 'comprehensive']).describe('Research depth level'),
   }),
   execute: async ({ topic, focus_areas, depth }) => {
-    const methodologies = depth === 'comprehensive' ? 5 : depth === 'detailed' ? 3 : 2;
-    
-    return `📚 **Enhanced Research Analysis**
+    try {
+      const tavilyApiKey = process.env.TAVILY_API_KEY;
+      if (!tavilyApiKey) {
+        return "❌ **Tavily API Error**: API key not configured for research tool";
+      }
 
-**Topic**: ${topic}
-**Focus Areas**: ${focus_areas.join(', ')}
-**Research Depth**: ${depth}
+      const fullQuery = `${topic} ${focus_areas.join(' ')}`;
+      const search_depth = depth === 'comprehensive' ? 'advanced' : 'basic';
+      const max_results = depth === 'comprehensive' ? 10 : depth === 'detailed' ? 7 : 5;
 
-**Research Methodologies Applied**:
-🔬 **Systematic Analysis**: Structured approach to ${topic}
-🔍 **Multi-source Investigation**: Cross-referencing information
-${methodologies > 2 ? '📊 **Comparative Analysis**: Different perspectives evaluated' : ''}
-${methodologies > 3 ? '🧪 **Experimental Validation**: Testing hypotheses' : ''}
-${methodologies > 4 ? '📈 **Longitudinal Study**: Historical and trend analysis' : ''}
+      const searchParams = {
+        api_key: tavilyApiKey,
+        query: fullQuery,
+        search_depth: search_depth,
+        max_results: max_results,
+        include_answer: true,
+        include_raw_content: false,
+      };
 
-**Key Research Areas**:
-${focus_areas.map(area => `- ${area}`).join('\n')}
+      console.log('🔬 Enhanced Research initiated with Tavily:', fullQuery);
 
-*Comprehensive research framework activated for ${depth} analysis...*`;
+      const response = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(searchParams)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Tavily API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Enhanced Research completed');
+
+      const results = data.results || [];
+      const answer = data.answer || '';
+
+      let formattedResults = `📚 **Enhanced Research Analysis**\n\n**Topic**: ${topic}\n**Focus Areas**: ${focus_areas.join(', ')}\n**Research Depth**: ${depth}\n\n`;
+
+      if (answer) {
+        formattedResults += `📝 **AI Summary**:\n${answer}\n\n`;
+      }
+
+      formattedResults += `🔍 **Research Findings**:\n\n${results.map((result: any, index: number) => `
+**${index + 1}. ${result.title}**
+🔗 **URL**: ${result.url}
+📝 **Content**: ${result.content}
+⭐ **Score**: ${result.score}
+---
+`).join('\n')}`;
+
+      return formattedResults;
+
+    } catch (error) {
+      console.error('Enhanced Research Error:', error);
+      return `❌ **Enhanced Research Error**: ${error instanceof Error ? error.message : 'Unknown error occurred'}`;
+    }
   }
 });
 
@@ -191,6 +231,255 @@ ${results.map((result: any, index: number) => `
   }
 });
 
+// Helper function to count words
+const countWords = (str: string): number => (str.match(/\S+/g) || []).length;
+
+/***********************
+ * Enhanced Configuration for DeepSeek V3-0324
+ ***********************/
+const CONFIG = {
+  // Model Configuration - Fixed to DeepSeek V3-0324
+  currentModel: "accounts/fireworks/models/deepseek-v3-0324",
+  isVisionModel: false, // DeepSeek V3-0324 doesn't have vision capabilities
+  
+  // Enhanced Reasoning Configuration
+  reasoningMethod: "enhanced_cod", // New enhanced method
+  codWordLimit: 5, // Start with research-proven optimal
+  reasoningEnhancement: "adaptive", // "adaptive" or "fixed"
+  
+  // Two-Stage API Configuration
+  enableTwoStageAPI: true,
+  stage1_analysis: true,
+  stage2_verification: true,
+  
+  // Reflection Configuration
+  reflectionSettings: {
+    enableSelfVerification: true,
+    enableErrorDetection: true,
+    enableAlternativeSearch: true,
+    enableConfidenceAssessment: true,
+    verificationDepth: "standard" // basic, standard, deep, research
+  },
+  
+  // Generation Parameters (DeepSeek V3-0324 optimized)
+  temperature: 0.3, // DeepSeek's optimal temperature
+  topP: 0.9,
+  topK: 40,
+  maxTokens: 8192,
+  enableStreaming: true,
+  
+  // Memory Configuration
+  memoryCategories: {
+    personalInfo: true,
+    projectDetails: true,
+    technicalKnowledge: true,
+    reflectionHistory: true
+  },
+  memoryRetention: "forever"
+};
+
+// Enhanced Memory Storage
+const MEMORY: { [key: string]: any[] } = {
+  personal: [],
+  projects: [],
+  technical: [],
+  reflections: [],
+  conversations: []
+};
+
+/*====================================
+ * ENHANCED PROMPTS FOR DEEPSEEK V3-0324
+ ===================================*/
+const ENHANCED_PROMPTS = {
+  // Stage 1: Analysis + Initial CoD
+  stage1_analysis_cod: (wordLimit: number) => `You are DeepSeek V3-0324, an advanced reasoning model. This is STAGE 1 of a two-stage enhanced reasoning process.
+
+CRITICAL INSTRUCTIONS:
+1. First, analyze the problem complexity and structure
+2. Then apply Chain of Draft (CoD) methodology with EXACTLY ${wordLimit} words per step
+3. Provide initial reflection on your reasoning
+4. End with a draft solution
+
+FORMAT:
+#### PROBLEM ANALYSIS
+[Analyze complexity, identify key components, determine approach]
+
+#### CHAIN OF DRAFT STEPS
+CoD Step 1: [${wordLimit} words maximum]
+CoD Step 2: [${wordLimit} words maximum]
+CoD Step 3: [${wordLimit} words maximum]
+[Continue as needed...]
+
+#### INITIAL REFLECTION
+[Reflect on reasoning quality, identify potential issues, assess confidence]
+
+#### DRAFT SOLUTION
+[Provide initial solution based on CoD analysis]
+
+Remember: This is STAGE 1. Be thorough but prepare for STAGE 2 verification.`,
+
+  // Stage 2: Deep Verification + Final Answer
+  stage2_verification: () => `You are DeepSeek V3-0324 in STAGE 2 of enhanced reasoning. You will now perform deep verification and provide the final comprehensive answer.
+
+Your task:
+1. CRITICALLY EXAMINE the Stage 1 analysis and CoD steps
+2. VERIFY each reasoning step for accuracy and logical consistency
+3. CHECK for mathematical errors, logical fallacies, or incomplete reasoning
+4. EXPLORE alternative approaches if needed
+5. ASSESS confidence levels and identify uncertainties
+6. PROVIDE a comprehensive final answer
+
+VERIFICATION CHECKLIST:
+□ Are all CoD steps logically sound?
+□ Are there any mathematical or computational errors?
+□ Are assumptions clearly stated and reasonable?
+□ Have alternative approaches been considered?
+□ Is the reasoning complete and comprehensive?
+□ Are there any gaps or weaknesses in the logic?
+
+FORMAT:
+#### STAGE 2 VERIFICATION
+[Critical analysis of Stage 1 reasoning]
+
+#### ERROR DETECTION & CORRECTION
+[Identify and correct any errors found]
+
+#### ALTERNATIVE APPROACH ANALYSIS
+[Consider alternative solution paths]
+
+#### CONFIDENCE ASSESSMENT
+[Evaluate confidence levels and identify uncertainties]
+
+#### FINAL COMPREHENSIVE ANSWER
+[Definitive, well-reasoned solution with full explanation]
+
+#### REFLECTION SUMMARY
+[Key insights, lessons learned, and reasoning quality assessment]`
+};
+
+/*====================================
+ * ADAPTIVE COMPLEXITY DETECTION (Enhanced)
+ ===================================*/
+function analyzeEnhancedComplexity(message: string) {
+  const complexity = {
+    // Basic indicators
+    hasMath: /[\d\+\-\*\/\=\(\)\^\%√∫∑∏]/.test(message),
+    hasLogic: /\b(if|then|else|because|therefore|since|implies|prove|logic|reasoning|analyze|compare|evaluate|assess)\b/i.test(message),
+    multiStep: /\b(first|next|then|after|finally|step|calculate|find|determine|process|stages?|phases?)\b/i.test(message),
+    
+    // Research indicators
+    hasResearch: /\b(research|study|investigate|explore|examine|review|analysis|synthesis|comprehensive|methodology)\b/i.test(message),
+    hasScientific: /\b(hypothesis|theory|experiment|data|statistical|scientific|empirical|peer.review|literature)\b/i.test(message),
+    
+    // Technical indicators
+    hasCoding: /\b(code|programming|algorithm|function|class|variable|debug|implement|develop|software)\b/i.test(message),
+    hasEngineering: /\b(design|optimization|system|architecture|performance|efficiency|scalability)\b/i.test(message),
+    
+    // Advanced indicators
+    hasPhilosophy: /\b(ethics|moral|philosophical|ontology|epistemology|metaphysics|consciousness)\b/i.test(message),
+    hasEconomics: /\b(economic|financial|market|trade|investment|fiscal|monetary|GDP|inflation)\b/i.test(message),
+    hasMedicine: /\b(medical|clinical|diagnosis|treatment|patient|therapy|pharmaceutical|biological)\b/i.test(message),
+    
+    // Complexity metrics
+    wordCount: countWords(message),
+    sentenceCount: (message.match(/[.!?]+/g) || []).length,
+    questionWords: (message.match(/\b(what|how|why|when|where|which|who)\b/gi) || []).length,
+    isLong: message.length > 300,
+    hasMultipleQuestions: (message.match(/\?/g) || []).length > 1,
+    level: 'simple',
+    recommendedWordLimit: 5,
+    recommendedVerification: 'basic',
+    score: 0
+  };
+
+  // Enhanced scoring system
+  let score = 0;
+  if (complexity.hasMath) score += 2;
+  if (complexity.hasLogic) score += 1;
+  if (complexity.multiStep) score += 1;
+  if (complexity.hasResearch) score += 3;
+  if (complexity.hasScientific) score += 2;
+  if (complexity.hasCoding) score += 1;
+  if (complexity.hasEngineering) score += 1;
+  if (complexity.hasPhilosophy) score += 2;
+  if (complexity.hasEconomics) score += 1;
+  if (complexity.hasMedicine) score += 2;
+  if (complexity.isLong) score += 1;
+  if (complexity.hasMultipleQuestions) score += 1;
+  if (complexity.questionWords > 3) score += 1;
+  if (complexity.sentenceCount > 10) score += 1;
+
+  // Determine complexity level with enhanced categories
+  if (score >= 8) {
+    complexity.level = 'research_grade';
+    complexity.recommendedWordLimit = 15;
+    complexity.recommendedVerification = 'research';
+  } else if (score >= 6) {
+    complexity.level = 'highly_complex';
+    complexity.recommendedWordLimit = 12;
+    complexity.recommendedVerification = 'deep';
+  } else if (score >= 4) {
+    complexity.level = 'complex';
+    complexity.recommendedWordLimit = 8;
+    complexity.recommendedVerification = 'standard';
+  } else if (score >= 2) {
+    complexity.level = 'moderate';
+    complexity.recommendedWordLimit = 5;
+    complexity.recommendedVerification = 'standard';
+  } else {
+    complexity.level = 'simple';
+    complexity.recommendedWordLimit = 5;
+    complexity.recommendedVerification = 'basic';
+  }
+
+  complexity.score = score;
+  return complexity;
+}
+
+function getAdaptiveEnhancedSettings(message: string) {
+  if (CONFIG.reasoningEnhancement !== 'adaptive') {
+    return {
+      method: CONFIG.reasoningMethod,
+      wordLimit: CONFIG.codWordLimit,
+      verificationDepth: CONFIG.reflectionSettings.verificationDepth,
+      adapted: false,
+      reasoning: 'Using fixed reasoning settings.'
+    };
+  }
+
+  const complexity = analyzeEnhancedComplexity(message);
+  let adaptedWordLimit = complexity.recommendedWordLimit;
+  let adaptedVerification = complexity.recommendedVerification;
+  let reasoning = '';
+
+  switch (complexity.level) {
+    case 'research_grade':
+      reasoning = 'Research-grade complexity detected - using extensive CoD steps with deep verification';
+      break;
+    case 'highly_complex':
+      reasoning = 'Highly complex problem detected - using expanded CoD with comprehensive verification';
+      break;
+    case 'complex':
+      reasoning = 'Complex problem detected - using moderate CoD expansion with standard verification';
+      break;
+    case 'moderate':
+      reasoning = 'Moderate complexity detected - using balanced CoD approach';
+      break;
+    case 'simple':
+      reasoning = 'Simple problem detected - using concise CoD steps';
+      break;
+  }
+
+  return {
+    method: CONFIG.reasoningMethod,
+    wordLimit: adaptedWordLimit,
+    verificationDepth: adaptedVerification,
+    complexity: complexity,
+    adapted: adaptedWordLimit !== CONFIG.codWordLimit || adaptedVerification !== CONFIG.reflectionSettings.verificationDepth,
+    reasoning: reasoning
+  };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { messages } = await req.json();
@@ -201,63 +490,85 @@ export async function POST(req: NextRequest) {
 
     console.log('Chat request received:', messages?.length, 'messages');
 
-    const result = streamText({
-      model: fireworks('accounts/fireworks/models/deepseek-v3-0324'),
-      messages: [
-        {
-          role: 'system',
-          content: `You are DeepSeek V3-0324 Enhanced CoD Studio - an advanced AI research assistant with Chain of Deliberation methodology and MCP agentic tools.
+    const userMessage = messages[messages.length - 1]?.content || '';
+    const adaptiveSettings = getAdaptiveEnhancedSettings(userMessage);
 
-🧠 **CORE CAPABILITIES**:
-- Chain of Deliberation (CoD) systematic reasoning
-- Enhanced memory and context retention
-- Advanced research and analysis capabilities
-- Real-time web search with Tavily integration
+    if (CONFIG.enableTwoStageAPI) {
+      console.log('🚀 Two-stage API enabled. Starting Stage 1.', { settings: adaptiveSettings });
 
-🛠️ **AVAILABLE MCP TOOLS**:
-- **cod_analysis**: For systematic Chain of Deliberation analysis on complex problems
-- **memory_store**: For storing important information in categorized memory
-- **verification_analysis**: For deep verification of reasoning and solutions
-- **enhanced_research**: For comprehensive research with multiple methodologies
-- **tavily_search**: For real-time web search and current information browsing
+      // --- STAGE 1: Analysis + Initial CoD ---
+      const stage1SystemPrompt = ENHANCED_PROMPTS.stage1_analysis_cod(adaptiveSettings.wordLimit);
+      
+      const stage1Messages = [
+        ...messages.slice(0, -1),
+        { role: 'system', content: stage1SystemPrompt },
+        messages[messages.length - 1]
+      ];
+      
+      const { text: stage1Response } = await generateText({
+        model: fireworks(CONFIG.currentModel),
+        messages: stage1Messages,
+        temperature: CONFIG.temperature,
+        topP: CONFIG.topP,
+        maxTokens: CONFIG.maxTokens,
+      });
 
-🎯 **REASONING APPROACH**:
-1. **Assess Complexity**: Determine if the query needs CoD methodology
-2. **Check Information Needs**: Use tavily_search for current/real-time information
-3. **Select Tools**: Choose appropriate MCP tools for the task
-4. **Execute Analysis**: Use systematic reasoning with tool support
-5. **Verify Results**: Apply verification when appropriate
-6. **Store Insights**: Save important findings to memory
+      console.log('✅ Stage 1 complete. Starting Stage 2.');
 
-**INSTRUCTIONS**:
-- Use CoD methodology for complex, multi-faceted problems
-- Use tavily_search for current events, real-time data, recent developments, or when you need to verify facts
-- Automatically invoke appropriate MCP tools based on query complexity and information needs
-- For complex analysis, use cod_analysis tool with appropriate complexity level
-- Store important insights using memory_store tool
-- Verify critical solutions using verification_analysis tool
-- Use enhanced_research for comprehensive topic exploration
-- Use tavily_search when users ask about recent events, current news, or need real-time information
-- Provide clear, structured responses with tool integration
-- Be professional, engaging, and demonstrate advanced reasoning capabilities
+      // --- STAGE 2: Deep Verification + Final Answer ---
+      const stage2SystemPrompt = ENHANCED_PROMPTS.stage2_verification();
+      
+      const stage2Messages = [
+        ...messages,
+        { role: 'assistant', content: stage1Response },
+        { role: 'system', content: stage2SystemPrompt }
+      ];
 
-Always strive for systematic, thorough analysis while maintaining clarity and practical applicability.`
+      const result = streamText({
+        model: fireworks(CONFIG.currentModel),
+        messages: stage2Messages,
+        tools: {
+          cod_analysis: codAnalysisTool,
+          memory_store: memoryStoreTool,
+          verification_analysis: verificationTool,
+          enhanced_research: researchTool,
+          tavily_search: tavilySearchTool,
         },
-        ...messages
-      ],
-      tools: {
-        cod_analysis: codAnalysisTool,
-        memory_store: memoryStoreTool,
-        verification_analysis: verificationTool,
-        enhanced_research: researchTool,
-        tavily_search: tavilySearchTool,
-      },
-      temperature: 0.3,
-      maxTokens: 4000,
-    });
+        temperature: CONFIG.temperature,
+        topP: CONFIG.topP,
+        maxTokens: CONFIG.maxTokens,
+      });
 
-    console.log('Fireworks API call initiated with MCP tools');
-    return result.toDataStreamResponse();
+      console.log('Fireworks API call initiated for Stage 2 with MCP tools');
+      return result.toDataStreamResponse();
+
+    } else {
+      // Fallback to single-stage implementation
+      console.log('Single-stage API call initiated.');
+      const result = streamText({
+        model: fireworks(CONFIG.currentModel),
+        messages: [
+          {
+            role: 'system',
+            content: `You are DeepSeek V3-0324 Enhanced CoD Studio - an advanced AI research assistant with Chain of Deliberation methodology and MCP agentic tools. Your instructions are to use the Chain of Draft methodology.`
+          },
+          ...messages
+        ],
+        tools: {
+          cod_analysis: codAnalysisTool,
+          memory_store: memoryStoreTool,
+          verification_analysis: verificationTool,
+          enhanced_research: researchTool,
+          tavily_search: tavilySearchTool,
+        },
+        temperature: CONFIG.temperature,
+        topP: CONFIG.topP,
+        maxTokens: CONFIG.maxTokens,
+      });
+
+      console.log('Fireworks API call initiated with MCP tools');
+      return result.toDataStreamResponse();
+    }
     
   } catch (error) {
     console.error('Chat API Error:', error);

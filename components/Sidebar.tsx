@@ -4,8 +4,17 @@ import React from 'react';
 
 const Sidebar = () => {
   const handleNewSession = () => {
+    // Clear all relevant storage items
+    localStorage.clear(); // Clear all localStorage items
+    sessionStorage.clear(); // Clear all sessionStorage items
+    
+    // Remove specific items
     localStorage.removeItem('chat-messages');
-    window.location.reload();
+    localStorage.removeItem('enhanced-cod-session');
+    localStorage.removeItem('ai-sdk-chat');
+    
+    // Force a clean reload
+    window.location.href = window.location.pathname;
   };
 
   const handleDownloadTxt = () => {
