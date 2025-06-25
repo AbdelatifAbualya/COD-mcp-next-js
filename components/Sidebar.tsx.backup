@@ -1,10 +1,11 @@
+
 'use client';
 
 import React from 'react';
 
 const Sidebar = () => {
   const handleNewSession = () => {
-    localStorage.removeItem('chat-messages');
+    // Clear the current conversation
     window.location.reload();
   };
 
@@ -153,7 +154,7 @@ const Sidebar = () => {
               <div className="w-2 h-2 bg-deepseek-400 rounded-full animate-pulse"></div>
               <span className="text-deepseek-300 text-sm font-medium">DeepSeek V3-0324</span>
             </div>
-            <span className="text-deepseek-400 text-xs bg-deepseek-900/30 px-2 py-1 rounded-full">Active</span>
+            <span id="modelStatus" className="text-deepseek-400 text-xs bg-deepseek-900/30 px-2 py-1 rounded-full">Active</span>
           </div>
           <div className="text-deepseek-200 text-xs">Latest reasoning model with reflection</div>
         </div>
@@ -167,7 +168,7 @@ const Sidebar = () => {
               </svg>
               <span className="text-green-300 text-sm font-medium">Memory Active</span>
             </div>
-            <span className="text-green-400 text-xs bg-green-900/30 px-2 py-1 rounded-full">0 items</span>
+            <span id="memoryCount" className="text-green-400 text-xs bg-green-900/30 px-2 py-1 rounded-full">0 items</span>
           </div>
           <div className="text-green-200 text-xs">Storing conversations & preferences</div>
         </div>
@@ -177,9 +178,9 @@ const Sidebar = () => {
       <div className="flex-1 p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-medium text-gray-300 uppercase tracking-wider">Recent Sessions</h3>
-          <span className="text-xs bg-dark-600 text-gray-400 px-2 py-1 rounded-full">1</span>
+          <span id="threadCount" className="text-xs bg-dark-600 text-gray-400 px-2 py-1 rounded-full">1</span>
         </div>
-        <ul className="space-y-2 mb-6">
+        <ul id="threadList" className="space-y-2 mb-6">
           <li className="bg-dark-600/50 hover:bg-dark-600 text-deepseek-300 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 border border-dark-500/50 hover:border-deepseek-500/50">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-deepseek-500/20 rounded-lg flex items-center justify-center">

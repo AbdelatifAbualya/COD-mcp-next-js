@@ -4,7 +4,7 @@ import React from 'react';
 
 const Sidebar = () => {
   const handleNewSession = () => {
-    localStorage.removeItem('chat-messages');
+    // Clear the current conversation
     window.location.reload();
   };
 
