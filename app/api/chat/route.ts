@@ -480,6 +480,132 @@ function getAdaptiveEnhancedSettings(message: string) {
   };
 }
 
+/***********************
+ * Enhanced CoD API Implementation with Multi-Stage Reasoning
+ ***********************/
+async function processEnhancedCoD(messages: any[], adaptiveSettings: any) {
+  const userMessage = messages[messages.length - 1]?.content || '';
+  
+  try {
+    // --- STAGE 1: Problem Analysis + Chain of Draft ---
+    console.log('🧠 Stage 1: Problem Analysis + Chain of Draft');
+    
+    const stage1Prompt = `You are DeepSeek V3-0324 in STAGE 1 of enhanced Chain of Draft reasoning.
+
+CRITICAL INSTRUCTIONS:
+1. Analyze the problem complexity and structure
+2. Apply Chain of Draft (CoD) methodology with EXACTLY ${adaptiveSettings.wordLimit} words per step
+3. Provide initial reflection on your reasoning
+4. End with a draft solution
+
+FORMAT YOUR RESPONSE EXACTLY AS:
+
+#### PROBLEM ANALYSIS
+[Analyze complexity, identify key components, determine approach - be thorough]
+
+#### CHAIN OF DRAFT STEPS
+CoD Step 1: [EXACTLY ${adaptiveSettings.wordLimit} words - first reasoning step]
+
+CoD Step 2: [EXACTLY ${adaptiveSettings.wordLimit} words - second reasoning step]
+
+CoD Step 3: [EXACTLY ${adaptiveSettings.wordLimit} words - third reasoning step]
+
+CoD Step 4: [EXACTLY ${adaptiveSettings.wordLimit} words - fourth reasoning step]
+${adaptiveSettings.complexity?.level === 'research_grade' || adaptiveSettings.complexity?.level === 'highly_complex' ? 
+`
+CoD Step 5: [EXACTLY ${adaptiveSettings.wordLimit} words - fifth reasoning step]
+
+CoD Step 6: [EXACTLY ${adaptiveSettings.wordLimit} words - sixth reasoning step]` : ''}
+
+#### INITIAL REFLECTION
+[Reflect on reasoning quality, identify potential issues, assess confidence]
+
+#### DRAFT SOLUTION
+[Provide initial solution based on CoD analysis]
+
+REMEMBER: This is STAGE 1. Be thorough but prepare for STAGE 2 verification.`;
+
+    const stage1Messages = [
+      { role: 'system' as const, content: stage1Prompt },
+      { role: 'user' as const, content: userMessage }
+    ];
+
+    const { text: stage1Response } = await generateText({
+      model: fireworks(CONFIG.currentModel),
+      messages: stage1Messages,
+      temperature: CONFIG.temperature,
+      maxTokens: Math.min(CONFIG.maxTokens, 4096),
+    });
+
+    console.log('✅ Stage 1 complete. Starting Stage 2.');
+
+    // --- STAGE 2: Deep Verification + Final Answer ---
+    console.log('🔍 Stage 2: Deep Verification + Final Answer');
+
+    const stage2Prompt = `You are DeepSeek V3-0324 in STAGE 2 of enhanced reasoning. Perform deep verification and provide the final comprehensive answer.
+
+STAGE 1 ANALYSIS TO VERIFY:
+${stage1Response}
+
+Your task:
+1. CRITICALLY EXAMINE the Stage 1 analysis and CoD steps
+2. VERIFY each reasoning step for accuracy and logical consistency
+3. CHECK for mathematical errors, logical fallacies, or incomplete reasoning
+4. EXPLORE alternative approaches if needed
+5. ASSESS confidence levels and identify uncertainties
+6. PROVIDE a comprehensive final answer
+
+FORMAT YOUR RESPONSE EXACTLY AS:
+
+#### STAGE 2 VERIFICATION
+[Critical analysis of Stage 1 reasoning - identify strengths and weaknesses]
+
+#### ERROR DETECTION & CORRECTION
+[Identify and correct any errors found, or state "No significant errors detected"]
+
+#### ALTERNATIVE APPROACH ANALYSIS
+[Consider alternative solution paths and compare approaches]
+
+#### CONFIDENCE ASSESSMENT
+[Evaluate confidence levels and identify uncertainties with percentage confidence]
+
+#### FINAL COMPREHENSIVE ANSWER
+[Definitive, well-reasoned solution with full explanation - this is your main answer]
+
+#### REFLECTION SUMMARY
+[Key insights, lessons learned, and reasoning quality assessment]
+
+VERIFICATION CHECKLIST COMPLETED:
+□ All CoD steps logically sound
+□ No mathematical/computational errors
+□ Assumptions clearly stated and reasonable
+□ Alternative approaches considered
+□ Reasoning complete and comprehensive
+□ No gaps or weaknesses in logic`;
+
+    const stage2Messages = [
+      { role: 'system' as const, content: stage2Prompt },
+      { role: 'user' as const, content: userMessage }
+    ];
+
+    // Return both stages as structured response
+    return {
+      stage1: stage1Response,
+      stage2: await generateText({
+        model: fireworks(CONFIG.currentModel),
+        messages: stage2Messages,
+        temperature: CONFIG.temperature * 0.8, // Slightly lower temperature for verification
+        maxTokens: CONFIG.maxTokens,
+      }),
+      adaptiveSettings
+    };
+
+  } catch (error) {
+    console.error('Enhanced CoD Error:', error);
+    throw error;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { messages } = await req.json();
@@ -493,40 +619,63 @@ export async function POST(req: NextRequest) {
     const userMessage = messages[messages.length - 1]?.content || '';
     const adaptiveSettings = getAdaptiveEnhancedSettings(userMessage);
 
-    if (CONFIG.enableTwoStageAPI) {
-      console.log('🚀 Two-stage API enabled. Starting Stage 1.', { settings: adaptiveSettings });
-
-      // --- STAGE 1: Analysis + Initial CoD ---
-      const stage1SystemPrompt = ENHANCED_PROMPTS.stage1_analysis_cod(adaptiveSettings.wordLimit);
-      
-      const stage1Messages = [
-        ...messages.slice(0, -1),
-        { role: 'system', content: stage1SystemPrompt },
-        messages[messages.length - 1]
-      ];
-      
-      const { text: stage1Response } = await generateText({
-        model: fireworks(CONFIG.currentModel),
-        messages: stage1Messages,
-        temperature: CONFIG.temperature,
-        topP: CONFIG.topP,
-        maxTokens: CONFIG.maxTokens,
+    if (CONFIG.enableTwoStageAPI && CONFIG.reasoningMethod === 'enhanced_cod') {
+      console.log('🚀 Enhanced CoD Two-stage API enabled.', { 
+        complexity: adaptiveSettings.complexity?.level,
+        wordLimit: adaptiveSettings.wordLimit,
+        verification: adaptiveSettings.verificationDepth
       });
 
-      console.log('✅ Stage 1 complete. Starting Stage 2.');
+      // Process Enhanced CoD
+      const codResult = await processEnhancedCoD(messages, adaptiveSettings);
 
-      // --- STAGE 2: Deep Verification + Final Answer ---
-      const stage2SystemPrompt = ENHANCED_PROMPTS.stage2_verification();
-      
-      const stage2Messages = [
-        ...messages,
-        { role: 'assistant', content: stage1Response },
-        { role: 'system', content: stage2SystemPrompt }
-      ];
+      // Format the combined response
+      const combinedResponse = `# 🧠 Enhanced Chain of Draft Analysis
 
+**Complexity Level**: ${adaptiveSettings.complexity?.level || 'moderate'}
+**Word Limit per Step**: ${adaptiveSettings.wordLimit} words
+**Verification Depth**: ${adaptiveSettings.verificationDepth}
+
+---
+
+## 📊 STAGE 1: ANALYSIS & DRAFT
+
+${codResult.stage1}
+
+---
+
+## 🔍 STAGE 2: VERIFICATION & FINAL ANSWER
+
+${codResult.stage2.text}
+
+---
+
+**⚡ Enhanced CoD Process Complete**
+- **Adaptive Reasoning**: ${adaptiveSettings.adapted ? 'Applied' : 'Standard'}
+- **Total Stages**: 2
+- **Verification**: ${adaptiveSettings.verificationDepth}`;
+
+      // Stream the final response with tools available
       const result = streamText({
         model: fireworks(CONFIG.currentModel),
-        messages: stage2Messages,
+        messages: [
+          {
+            role: 'system',
+            content: `You are DeepSeek V3-0324 Enhanced CoD Studio. Present this Chain of Draft analysis clearly and offer to use tools if needed for further research or verification.`
+          },
+          {
+            role: 'user',
+            content: userMessage
+          },
+          {
+            role: 'assistant',
+            content: combinedResponse
+          },
+          {
+            role: 'user',
+            content: 'Please present this analysis clearly and offer any additional tools if helpful.'
+          }
+        ],
         tools: {
           cod_analysis: codAnalysisTool,
           memory_store: memoryStoreTool,
@@ -534,23 +683,36 @@ export async function POST(req: NextRequest) {
           enhanced_research: researchTool,
           tavily_search: tavilySearchTool,
         },
-        temperature: CONFIG.temperature,
-        topP: CONFIG.topP,
-        maxTokens: CONFIG.maxTokens,
+        temperature: 0.2,
+        maxTokens: 2000,
       });
 
-      console.log('Fireworks API call initiated for Stage 2 with MCP tools');
       return result.toDataStreamResponse();
 
     } else {
-      // Fallback to single-stage implementation
-      console.log('Single-stage API call initiated.');
+      // Standard single-stage implementation
+      console.log('Standard API call initiated.');
       const result = streamText({
         model: fireworks(CONFIG.currentModel),
         messages: [
           {
             role: 'system',
-            content: `You are DeepSeek V3-0324 Enhanced CoD Studio - an advanced AI research assistant with Chain of Deliberation methodology and MCP agentic tools. Your instructions are to use the Chain of Draft methodology.`
+            content: `You are DeepSeek V3-0324 Enhanced CoD Studio - an advanced AI research assistant with Chain of Draft methodology and MCP agentic tools.
+
+🧠 **CORE CAPABILITIES**:
+- Chain of Draft (CoD) systematic reasoning
+- Enhanced memory and context retention
+- Advanced research and analysis capabilities
+- Real-time web search with Tavily integration
+
+🛠️ **AVAILABLE MCP TOOLS**:
+- **cod_analysis**: For systematic Chain of Draft analysis on complex problems
+- **memory_store**: For storing important information in categorized memory
+- **verification_analysis**: For deep verification of reasoning and solutions
+- **enhanced_research**: For comprehensive research with multiple methodologies
+- **tavily_search**: For real-time web search and current information browsing
+
+Always strive for systematic, thorough analysis while maintaining clarity and practical applicability.`
           },
           ...messages
         ],
@@ -562,11 +724,9 @@ export async function POST(req: NextRequest) {
           tavily_search: tavilySearchTool,
         },
         temperature: CONFIG.temperature,
-        topP: CONFIG.topP,
         maxTokens: CONFIG.maxTokens,
       });
 
-      console.log('Fireworks API call initiated with MCP tools');
       return result.toDataStreamResponse();
     }
     
