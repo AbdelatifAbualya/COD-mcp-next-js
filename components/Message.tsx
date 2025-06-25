@@ -25,207 +25,275 @@ interface EnhancedCoDRendererProps {
 
 // Enhanced CoD Renderer Component
 const EnhancedCoDRenderer = ({ content }: EnhancedCoDRendererProps) => {
-  // Check if content contains CoD structure
-  const hasStage1 = content.includes('STAGE 1: ANALYSIS & DRAFT');
-  const hasStage2 = content.includes('STAGE 2: VERIFICATION & FINAL ANSWER');
+  // Check if content contains CoD structure (comprehensive detection)
+  const hasStage1 = content.includes('STAGE 1') || content.includes('#### PROBLEM ANALYSIS');
+  const hasStage2 = content.includes('STAGE 2') || content.includes('#### STAGE 2 VERIFICATION');
   const hasProblemAnalysis = content.includes('#### PROBLEM ANALYSIS');
-  const hasCoDSteps = content.includes('CoD Step');
+  const hasCoDSteps = content.includes('CoD Step') || content.includes('#### CHAIN OF DRAFT STEPS');
+  const hasVerification = content.includes('#### STAGE 2 VERIFICATION');
+  const hasErrorDetection = content.includes('#### ERROR DETECTION');
+  const hasAlternativeAnalysis = content.includes('#### ALTERNATIVE APPROACH');
+  const hasConfidenceAssessment = content.includes('#### CONFIDENCE ASSESSMENT');
+  const hasFinalAnswer = content.includes('#### FINAL COMPREHENSIVE ANSWER');
+  const hasReflectionSummary = content.includes('#### REFLECTION SUMMARY');
   
-  if (!hasStage1 && !hasStage2 && !hasProblemAnalysis && !hasCoDSteps) {
-    // Regular content, render normally
-    return <div dangerouslySetInnerHTML={{ __html: formatMarkdown(content) }} />;
+  // If it's a CoD response, use the enhanced renderer
+  if (hasStage1 || hasStage2 || hasProblemAnalysis || hasCoDSteps || hasVerification || 
+      hasErrorDetection || hasAlternativeAnalysis || hasConfidenceAssessment || 
+      hasFinalAnswer || hasReflectionSummary) {
+    return <CoDStructuredRenderer content={content} />;
   }
 
-  // Parse CoD structured content
-  const sections = content.split('---');
+  // Regular content, render normally
+  return <div dangerouslySetInnerHTML={{ __html: formatMarkdown(content) }} />;
+};
+
+// New structured CoD renderer that handles the actual format
+const CoDStructuredRenderer = ({ content }: { content: string }) => {
+  // Split content by main sections using #### headers
+  const sections = content.split(/#### /).filter(section => section.trim().length > 0);
   
   return (
     <div className="cod-analysis-container space-y-6">
-      {sections.map((section, index) => {
-        if (section.includes('STAGE 1: ANALYSIS & DRAFT')) {
-          return <Stage1Renderer key={index} content={section} />;
-        } else if (section.includes('STAGE 2: VERIFICATION & FINAL ANSWER')) {
-          return <Stage2Renderer key={index} content={section} />;
-        } else if (section.includes('Enhanced Chain of Draft Analysis')) {
-          return <CoDHeaderRenderer key={index} content={section} />;
-        } else {
-          return <div key={index} dangerouslySetInnerHTML={{ __html: formatMarkdown(section) }} />;
-        }
-      })}
-    </div>
-  );
-};
-
-// Stage 1 Renderer
-const Stage1Renderer = ({ content }: { content: string }) => {
-  const parts = content.split('####');
-  
-  return (
-    <div className="stage-1-container bg-blue-900/20 border border-blue-500/30 rounded-xl p-6 animate-fadeIn">
-      <div className="stage-header flex items-center gap-3 mb-4">
-        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">1</div>
-        <h3 className="text-lg font-semibold text-blue-300">STAGE 1: ANALYSIS & DRAFT</h3>
-        <div className="bg-blue-600/20 text-blue-300 text-xs px-2 py-1 rounded-full">Problem Analysis</div>
-      </div>
-      
-      {parts.map((part, index) => {
-        if (part.includes('PROBLEM ANALYSIS')) {
-          return (
-            <div key={index} className="problem-analysis bg-blue-800/30 rounded-lg p-4 mb-4">
-              <h4 className="text-blue-300 font-semibold mb-2 flex items-center gap-2">
-                <span>📊</span> Problem Analysis
-              </h4>
-              <div className="text-blue-100 text-sm" dangerouslySetInnerHTML={{ __html: formatMarkdown(part.replace('PROBLEM ANALYSIS', '')) }} />
-            </div>
-          );
-        } else if (part.includes('CHAIN OF DRAFT STEPS')) {
-          return <CoDStepsRenderer key={index} content={part} />;
-        } else if (part.includes('INITIAL REFLECTION')) {
-          return (
-            <div key={index} className="initial-reflection bg-purple-800/30 rounded-lg p-4 mb-4">
-              <h4 className="text-purple-300 font-semibold mb-2 flex items-center gap-2">
-                <span>🤔</span> Initial Reflection
-              </h4>
-              <div className="text-purple-100 text-sm" dangerouslySetInnerHTML={{ __html: formatMarkdown(part.replace('INITIAL REFLECTION', '')) }} />
-            </div>
-          );
-        } else if (part.includes('DRAFT SOLUTION')) {
-          return (
-            <div key={index} className="draft-solution bg-green-800/30 rounded-lg p-4">
-              <h4 className="text-green-300 font-semibold mb-2 flex items-center gap-2">
-                <span>📝</span> Draft Solution
-              </h4>
-              <div className="text-green-100 text-sm" dangerouslySetInnerHTML={{ __html: formatMarkdown(part.replace('DRAFT SOLUTION', '')) }} />
-            </div>
-          );
-        }
-        return null;
-      })}
-    </div>
-  );
-};
-
-// Stage 2 Renderer
-const Stage2Renderer = ({ content }: { content: string }) => {
-  const parts = content.split('####');
-  
-  return (
-    <div className="stage-2-container bg-purple-900/20 border border-purple-500/30 rounded-xl p-6 animate-fadeIn">
-      <div className="stage-header flex items-center gap-3 mb-4">
-        <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold">2</div>
-        <h3 className="text-lg font-semibold text-purple-300">STAGE 2: VERIFICATION & FINAL ANSWER</h3>
-        <div className="bg-purple-600/20 text-purple-300 text-xs px-2 py-1 rounded-full">Deep Verification</div>
-      </div>
-      
-      {parts.map((part, index) => {
-        if (part.includes('STAGE 2 VERIFICATION')) {
-          return (
-            <div key={index} className="verification bg-purple-800/30 rounded-lg p-4 mb-4">
-              <h4 className="text-purple-300 font-semibold mb-2 flex items-center gap-2">
-                <span>🔍</span> Stage 2 Verification
-              </h4>
-              <div className="text-purple-100 text-sm" dangerouslySetInnerHTML={{ __html: formatMarkdown(part.replace('STAGE 2 VERIFICATION', '')) }} />
-            </div>
-          );
-        } else if (part.includes('ERROR DETECTION & CORRECTION')) {
-          return (
-            <div key={index} className="error-detection bg-red-800/30 rounded-lg p-4 mb-4">
-              <h4 className="text-red-300 font-semibold mb-2 flex items-center gap-2">
-                <span>🚨</span> Error Detection & Correction
-              </h4>
-              <div className="text-red-100 text-sm" dangerouslySetInnerHTML={{ __html: formatMarkdown(part.replace('ERROR DETECTION & CORRECTION', '')) }} />
-            </div>
-          );
-        } else if (part.includes('ALTERNATIVE APPROACH ANALYSIS')) {
-          return (
-            <div key={index} className="alternative-analysis bg-yellow-800/30 rounded-lg p-4 mb-4">
-              <h4 className="text-yellow-300 font-semibold mb-2 flex items-center gap-2">
-                <span>🔄</span> Alternative Approach Analysis
-              </h4>
-              <div className="text-yellow-100 text-sm" dangerouslySetInnerHTML={{ __html: formatMarkdown(part.replace('ALTERNATIVE APPROACH ANALYSIS', '')) }} />
-            </div>
-          );
-        } else if (part.includes('CONFIDENCE ASSESSMENT')) {
-          return (
-            <div key={index} className="confidence-assessment bg-teal-800/30 rounded-lg p-4 mb-4">
-              <h4 className="text-teal-300 font-semibold mb-2 flex items-center gap-2">
-                <span>📊</span> Confidence Assessment
-              </h4>
-              <div className="text-teal-100 text-sm" dangerouslySetInnerHTML={{ __html: formatMarkdown(part.replace('CONFIDENCE ASSESSMENT', '')) }} />
-            </div>
-          );
-        } else if (part.includes('FINAL COMPREHENSIVE ANSWER')) {
-          return (
-            <div key={index} className="final-answer bg-green-800/30 rounded-lg p-4 mb-4 border-2 border-green-500/50">
-              <h4 className="text-green-300 font-semibold mb-2 flex items-center gap-2">
-                <span>✅</span> Final Comprehensive Answer
-              </h4>
-              <div className="text-green-100" dangerouslySetInnerHTML={{ __html: formatMarkdown(part.replace('FINAL COMPREHENSIVE ANSWER', '')) }} />
-            </div>
-          );
-        } else if (part.includes('REFLECTION SUMMARY')) {
-          return (
-            <div key={index} className="reflection-summary bg-indigo-800/30 rounded-lg p-4">
-              <h4 className="text-indigo-300 font-semibold mb-2 flex items-center gap-2">
-                <span>💭</span> Reflection Summary
-              </h4>
-              <div className="text-indigo-100 text-sm" dangerouslySetInnerHTML={{ __html: formatMarkdown(part.replace('REFLECTION SUMMARY', '')) }} />
-            </div>
-          );
-        }
-        return null;
-      })}
-    </div>
-  );
-};
-
-// CoD Steps Renderer
-const CoDStepsRenderer = ({ content }: { content: string }) => {
-  const steps = content.split(/CoD Step \d+:/);
-  
-  return (
-    <div className="cod-steps bg-slate-800/30 rounded-lg p-4 mb-4">
-      <h4 className="text-slate-300 font-semibold mb-3 flex items-center gap-2">
-        <span>🧠</span> Chain of Draft Steps
-      </h4>
-      <div className="space-y-3">
-        {steps.slice(1).map((step, index) => (
-          <div key={index} className="cod-step bg-slate-700/50 rounded-lg p-3 border-l-4 border-blue-500">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                {index + 1}
-              </div>
-              <span className="text-slate-300 text-sm font-medium">Step {index + 1}</span>
-            </div>
-            <div className="text-slate-100 text-sm pl-8" dangerouslySetInnerHTML={{ __html: formatMarkdown(step.trim()) }} />
+      {/* Enhanced CoD Header */}
+      <div className="cod-header bg-gradient-to-r from-blue-900/40 to-purple-900/40 border border-blue-500/50 rounded-xl p-4 mb-6">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold">🧠</span>
           </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// CoD Header Renderer
-const CoDHeaderRenderer = ({ content }: { content: string }) => {
-  return (
-    <div className="cod-header bg-gradient-to-r from-blue-900/40 to-purple-900/40 border border-blue-500/50 rounded-xl p-4 mb-6">
-      <div className="flex items-center gap-3 mb-2">
-        <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-          <span className="text-white font-bold">🧠</span>
+          <h2 className="text-xl font-bold text-white">Enhanced Chain of Draft Analysis - DeepSeek V3-0324</h2>
         </div>
-        <h2 className="text-xl font-bold text-white">Enhanced Chain of Draft Analysis</h2>
+        <div className="text-sm text-gray-300">
+          Advanced two-stage reasoning with systematic verification and reflection
+        </div>
       </div>
-      <div className="text-sm text-gray-300" dangerouslySetInnerHTML={{ __html: formatMarkdown(content) }} />
+
+      {/* Process each section */}
+      {sections.map((section, index) => {
+        const sectionTitle = section.split('\n')[0].trim();
+        const sectionContent = section.substring(section.indexOf('\n') + 1).trim();
+        
+        return <CoDSectionRenderer key={index} title={sectionTitle} content={sectionContent} />;
+      })}
     </div>
   );
 };
 
-// Simple markdown formatter
+// Individual section renderer for CoD components
+const CoDSectionRenderer = ({ title, content }: { title: string; content: string }) => {
+  const normalizedTitle = title.toLowerCase();
+  
+  if (normalizedTitle.includes('problem analysis')) {
+    return (
+      <div className="problem-analysis bg-blue-900/20 border border-blue-500/30 rounded-xl p-6 animate-fadeIn">
+        <div className="stage-header flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">📊</div>
+          <h3 className="text-lg font-semibold text-blue-300">Problem Analysis</h3>
+          <div className="bg-blue-600/20 text-blue-300 text-xs px-2 py-1 rounded-full">Initial Reflection</div>
+        </div>
+        <div className="text-blue-100" dangerouslySetInnerHTML={{ __html: formatMarkdown(content) }} />
+      </div>
+    );
+  }
+  
+  if (normalizedTitle.includes('chain of draft steps')) {
+    return <CoDStepsRenderer content={content} />;
+  }
+  
+  if (normalizedTitle.includes('initial reflection')) {
+    return (
+      <div className="initial-reflection bg-purple-900/20 border border-purple-500/30 rounded-xl p-6 animate-fadeIn">
+        <div className="stage-header flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold">🤔</div>
+          <h3 className="text-lg font-semibold text-purple-300">Initial Reflection</h3>
+          <div className="bg-purple-600/20 text-purple-300 text-xs px-2 py-1 rounded-full">Stage 1</div>
+        </div>
+        <div className="text-purple-100" dangerouslySetInnerHTML={{ __html: formatMarkdown(content) }} />
+      </div>
+    );
+  }
+  
+  if (normalizedTitle.includes('draft solution')) {
+    return (
+      <div className="draft-solution bg-green-900/20 border border-green-500/30 rounded-xl p-6 animate-fadeIn">
+        <div className="stage-header flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold">📝</div>
+          <h3 className="text-lg font-semibold text-green-300">Draft Solution</h3>
+          <div className="bg-green-600/20 text-green-300 text-xs px-2 py-1 rounded-full">Stage 1</div>
+        </div>
+        <div className="text-green-100" dangerouslySetInnerHTML={{ __html: formatMarkdown(content) }} />
+      </div>
+    );
+  }
+  
+  if (normalizedTitle.includes('stage 2 verification')) {
+    return (
+      <div className="stage2-verification bg-purple-900/20 border border-purple-500/30 rounded-xl p-6 animate-fadeIn">
+        <div className="stage-header flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold">2</div>
+          <h3 className="text-lg font-semibold text-purple-300">Stage 2 Verification</h3>
+          <div className="bg-purple-600/20 text-purple-300 text-xs px-2 py-1 rounded-full">VERIFIED</div>
+        </div>
+        <div className="text-purple-100" dangerouslySetInnerHTML={{ __html: formatMarkdown(content) }} />
+      </div>
+    );
+  }
+  
+  if (normalizedTitle.includes('error detection')) {
+    return (
+      <div className="error-detection bg-red-900/20 border border-red-500/30 rounded-xl p-6 animate-fadeIn">
+        <div className="stage-header flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center text-white font-bold">🚨</div>
+          <h3 className="text-lg font-semibold text-red-300">Error Detection & Correction</h3>
+          <div className="bg-red-600/20 text-red-300 text-xs px-2 py-1 rounded-full">Stage 2</div>
+        </div>
+        <div className="text-red-100" dangerouslySetInnerHTML={{ __html: formatMarkdown(content) }} />
+      </div>
+    );
+  }
+  
+  if (normalizedTitle.includes('alternative approach')) {
+    return (
+      <div className="alternative-analysis bg-yellow-900/20 border border-yellow-500/30 rounded-xl p-6 animate-fadeIn">
+        <div className="stage-header flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 bg-yellow-600 rounded-lg flex items-center justify-center text-white font-bold">🔄</div>
+          <h3 className="text-lg font-semibold text-yellow-300">Alternative Approach Analysis</h3>
+          <div className="bg-yellow-600/20 text-yellow-300 text-xs px-2 py-1 rounded-full">Stage 2</div>
+        </div>
+        <div className="text-yellow-100" dangerouslySetInnerHTML={{ __html: formatMarkdown(content) }} />
+      </div>
+    );
+  }
+  
+  if (normalizedTitle.includes('confidence assessment')) {
+    return (
+      <div className="confidence-assessment bg-teal-900/20 border border-teal-500/30 rounded-xl p-6 animate-fadeIn">
+        <div className="stage-header flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center text-white font-bold">📊</div>
+          <h3 className="text-lg font-semibold text-teal-300">Confidence Assessment</h3>
+          <div className="bg-teal-600/20 text-teal-300 text-xs px-2 py-1 rounded-full">Stage 2</div>
+        </div>
+        <div className="text-teal-100" dangerouslySetInnerHTML={{ __html: formatMarkdown(content) }} />
+      </div>
+    );
+  }
+  
+  if (normalizedTitle.includes('final comprehensive answer')) {
+    return (
+      <div className="final-answer bg-green-900/20 border-2 border-green-500/50 rounded-xl p-6 animate-fadeIn">
+        <div className="stage-header flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold">✅</div>
+          <h3 className="text-lg font-semibold text-green-300">Final Comprehensive Answer</h3>
+          <div className="bg-green-600/20 text-green-300 text-xs px-2 py-1 rounded-full">FINAL</div>
+        </div>
+        <div className="text-green-100 text-base font-medium" dangerouslySetInnerHTML={{ __html: formatMarkdown(content) }} />
+      </div>
+    );
+  }
+  
+  if (normalizedTitle.includes('reflection summary')) {
+    return (
+      <div className="reflection-summary bg-indigo-900/20 border border-indigo-500/30 rounded-xl p-6 animate-fadeIn">
+        <div className="stage-header flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold">💭</div>
+          <h3 className="text-lg font-semibold text-indigo-300">Reflection Summary</h3>
+          <div className="bg-indigo-600/20 text-indigo-300 text-xs px-2 py-1 rounded-full">Summary</div>
+        </div>
+        <div className="text-indigo-100" dangerouslySetInnerHTML={{ __html: formatMarkdown(content) }} />
+      </div>
+    );
+  }
+  
+  // Default fallback for unrecognized sections
+  return (
+    <div className="general-section bg-gray-900/20 border border-gray-500/30 rounded-xl p-6 animate-fadeIn">
+      <h4 className="text-gray-300 font-semibold mb-3 capitalize">{title}</h4>
+      <div className="text-gray-100" dangerouslySetInnerHTML={{ __html: formatMarkdown(content) }} />
+    </div>
+  );
+};
+
+// CoD Steps Renderer - Updated to handle the actual format
+const CoDStepsRenderer = ({ content }: { content: string }) => {
+  // Split by CoD Step patterns and clean up
+  const stepPattern = /CoD Step \d+:.*?(?=CoD Step \d+:|$)/g;
+  const stepMatches = content.match(stepPattern) || [];
+  
+  // If no specific steps found, try to parse line by line
+  if (stepMatches.length === 0) {
+    const lines = content.split('\n').filter(line => line.trim().length > 0);
+    const steps = lines.filter(line => line.includes('CoD Step') || /^\d+\./.test(line.trim()));
+    
+    if (steps.length === 0) {
+      // Fallback: treat each paragraph as a step
+      const paragraphs = content.split('\n\n').filter(p => p.trim().length > 0);
+      return (
+        <div className="cod-steps bg-slate-900/20 border border-slate-500/30 rounded-xl p-6 animate-fadeIn">
+          <div className="stage-header flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 bg-slate-600 rounded-lg flex items-center justify-center text-white font-bold">🧠</div>
+            <h3 className="text-lg font-semibold text-slate-300">Chain of Draft Steps</h3>
+            <div className="bg-slate-600/20 text-slate-300 text-xs px-2 py-1 rounded-full">Stage 1</div>
+          </div>
+          <div className="space-y-3">
+            {paragraphs.map((step, index) => (
+              <div key={index} className="cod-step bg-slate-800/50 rounded-lg p-4 border-l-4 border-blue-500">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                    {index + 1}
+                  </div>
+                  <span className="text-slate-300 text-sm font-medium">Step {index + 1}</span>
+                </div>
+                <div className="text-slate-100 text-sm pl-8" dangerouslySetInnerHTML={{ __html: formatMarkdown(step.trim()) }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+  }
+  
+  return (
+    <div className="cod-steps bg-slate-900/20 border border-slate-500/30 rounded-xl p-6 animate-fadeIn">
+      <div className="stage-header flex items-center gap-3 mb-4">
+        <div className="w-8 h-8 bg-slate-600 rounded-lg flex items-center justify-center text-white font-bold">🧠</div>
+        <h3 className="text-lg font-semibold text-slate-300">Chain of Draft Steps</h3>
+        <div className="bg-slate-600/20 text-slate-300 text-xs px-2 py-1 rounded-full">Stage 1</div>
+      </div>
+      <div className="space-y-3">
+        {stepMatches.map((step, index) => {
+          const stepContent = step.replace(/CoD Step \d+:\s*/, '').trim();
+          return (
+            <div key={index} className="cod-step bg-slate-800/50 rounded-lg p-4 border-l-4 border-blue-500">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                  {index + 1}
+                </div>
+                <span className="text-slate-300 text-sm font-medium">CoD Step {index + 1}</span>
+                <div className="bg-blue-600/20 text-blue-300 text-xs px-2 py-1 rounded-full">
+                  {stepContent.split(' ').length} words
+                </div>
+              </div>
+              <div className="text-slate-100 text-sm pl-8" dangerouslySetInnerHTML={{ __html: formatMarkdown(stepContent) }} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// Enhanced markdown formatter with better support for CoD content
 const formatMarkdown = (content: string): string => {
   return content
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/`(.*?)`/g, '<code class="bg-gray-800 px-1 py-0.5 rounded text-sm">$1</code>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
+    .replace(/`(.*?)`/g, '<code class="bg-gray-800 px-1 py-0.5 rounded text-sm font-mono">$1</code>')
+    .replace(/^###\s+(.*$)/gim, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>')
+    .replace(/^##\s+(.*$)/gim, '<h2 class="text-xl font-bold mt-4 mb-2">$1</h2>')
+    .replace(/^#\s+(.*$)/gim, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>')
+    .replace(/^\-\s+(.*$)/gim, '<div class="flex items-start gap-2 ml-4 mb-1"><span class="text-blue-400">•</span><span>$1</span></div>')
+    .replace(/^\d+\.\s+(.*$)/gim, '<div class="flex items-start gap-2 ml-4 mb-1"><span class="text-blue-400 font-semibold">$1</span></div>')
+    .replace(/\n\n/g, '<br/><br/>')
     .replace(/\n/g, '<br/>');
 };
 

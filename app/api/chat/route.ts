@@ -629,31 +629,12 @@ export async function POST(req: NextRequest) {
       // Process Enhanced CoD
       const codResult = await processEnhancedCoD(messages, adaptiveSettings);
 
-      // Format the combined response
-      const combinedResponse = `# 🧠 Enhanced Chain of Draft Analysis
+      // Format the combined response with proper structure for the frontend
+      const combinedResponse = `${codResult.stage1}
 
-**Complexity Level**: ${adaptiveSettings.complexity?.level || 'moderate'}
-**Word Limit per Step**: ${adaptiveSettings.wordLimit} words
-**Verification Depth**: ${adaptiveSettings.verificationDepth}
+${codResult.stage2.text}`;
 
----
-
-## 📊 STAGE 1: ANALYSIS & DRAFT
-
-${codResult.stage1}
-
----
-
-## 🔍 STAGE 2: VERIFICATION & FINAL ANSWER
-
-${codResult.stage2.text}
-
----
-
-**⚡ Enhanced CoD Process Complete**
-- **Adaptive Reasoning**: ${adaptiveSettings.adapted ? 'Applied' : 'Standard'}
-- **Total Stages**: 2
-- **Verification**: ${adaptiveSettings.verificationDepth}`;
+      console.log('✅ Enhanced CoD processing complete');
 
       // Stream the final response with tools available
       const result = streamText({
@@ -661,7 +642,9 @@ ${codResult.stage2.text}
         messages: [
           {
             role: 'system',
-            content: `You are DeepSeek V3-0324 Enhanced CoD Studio. Present this Chain of Draft analysis clearly and offer to use tools if needed for further research or verification.`
+            content: `You are DeepSeek V3-0324 Enhanced CoD Studio. Present this Chain of Draft analysis clearly and offer to use tools if needed for further research or verification.
+
+IMPORTANT: Return the provided analysis exactly as formatted without adding your own headers or modifications.`
           },
           {
             role: 'user',
@@ -673,7 +656,7 @@ ${codResult.stage2.text}
           },
           {
             role: 'user',
-            content: 'Please present this analysis clearly and offer any additional tools if helpful.'
+            content: 'Present this analysis as provided, without modification.'
           }
         ],
         tools: {
