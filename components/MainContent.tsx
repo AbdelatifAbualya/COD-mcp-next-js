@@ -9,12 +9,34 @@ interface MainContentProps {
 }
 
 const MainContent: React.FC<MainContentProps> = ({ onOpenSettings }) => {
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error, append } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, isLoading, error, append, setMessages } = useChat({
     api: '/api/chat',
     onError: (error) => {
       console.error('Chat error:', error);
     }
   });
+
+  React.useEffect(() => {
+    // Listen for storage changes to reset chat when new session is created
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'chat-reset' || e.key === null) {
+        setMessages([]);
+      }
+    };
+
+    // Listen for custom events for chat reset
+    const handleChatReset = () => {
+      setMessages([]);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('chat-reset', handleChatReset);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('chat-reset', handleChatReset);
+    };
+  }, [setMessages]);
 
   const handleTestTavily = () => {
     append({

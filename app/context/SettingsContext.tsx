@@ -18,6 +18,13 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     temperature: 0.7,
     maxTokens: 4096,
     topP: 1,
+    mcpTools: {
+      codAnalysis: true,
+      tavilySearch: true,
+      enhancedResearch: true,
+      memoryStore: true,
+      verificationAnalysis: true,
+    },
   });
 
   const updateSettings = (newSettings: Partial<Settings>) => {

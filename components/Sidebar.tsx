@@ -3,18 +3,58 @@
 import React from 'react';
 
 const Sidebar = () => {
+  const [sessionCount, setSessionCount] = React.useState(1);
+  const [sessions, setSessions] = React.useState([
+    { id: 1, title: 'Research Session 1', timestamp: 'Just now', active: true }
+  ]);
+
   const handleNewSession = () => {
-    // Clear all relevant storage items
-    localStorage.clear(); // Clear all localStorage items
-    sessionStorage.clear(); // Clear all sessionStorage items
-    
-    // Remove specific items
+    // Clear chat-related storage
     localStorage.removeItem('chat-messages');
-    localStorage.removeItem('enhanced-cod-session');
     localStorage.removeItem('ai-sdk-chat');
     
-    // Force a clean reload
-    window.location.href = window.location.pathname;
+    // Create new session
+    const newSessionId = sessionCount + 1;
+    const newSession = {
+      id: newSessionId,
+      title: `Research Session ${newSessionId}`,
+      timestamp: 'Just now',
+      active: true
+    };
+    
+    // Update sessions
+    setSessions(prev => prev.map(s => ({ ...s, active: false })).concat(newSession));
+    setSessionCount(newSessionId);
+    
+    // Trigger chat reset event
+    window.dispatchEvent(new CustomEvent('chat-reset'));
+    
+    // Small delay then reload to ensure state is clean
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
+  };
+
+  const handleDeleteSpecificSession = (sessionId: number) => {
+    if (confirm('Are you sure you want to delete this session? This action cannot be undone.')) {
+      setSessions(prev => prev.filter(s => s.id !== sessionId));
+      
+      // If deleting active session, activate the most recent one
+      const remainingSessions = sessions.filter(s => s.id !== sessionId);
+      if (remainingSessions.length > 0 && sessions.find(s => s.id === sessionId)?.active) {
+        const mostRecent = remainingSessions[remainingSessions.length - 1];
+        setSessions(prev => prev.map(s => 
+          s.id === mostRecent.id ? { ...s, active: true } : { ...s, active: false }
+        ));
+      }
+      
+      // Clear chat if deleting active session
+      if (sessions.find(s => s.id === sessionId)?.active) {
+        localStorage.removeItem('chat-messages');
+        localStorage.removeItem('ai-sdk-chat');
+        window.location.reload();
+      }
+    }
   };
 
   const handleDownloadTxt = () => {
@@ -105,14 +145,9 @@ const Sidebar = () => {
 
   const handleClearSession = () => {
     if (confirm('Are you sure you want to clear this session? This action cannot be undone.')) {
-      // Clear messages from the chat
-      const messagesContainer = document.querySelector('[class*="overflow-y-auto"]');
-      if (messagesContainer) {
-        const messages = messagesContainer.querySelectorAll('.message');
-        messages.forEach(msg => msg.remove());
-      }
-      
-      // Show cleared message
+      // Clear messages and reload
+      localStorage.removeItem('chat-messages');
+      localStorage.removeItem('ai-sdk-chat');
       window.location.reload();
     }
   };
@@ -122,6 +157,7 @@ const Sidebar = () => {
       // Clear localStorage if any session data is stored there
       localStorage.removeItem('enhanced-cod-session');
       localStorage.removeItem('chat-messages');
+      localStorage.removeItem('ai-sdk-chat');
       
       // Reload the page to start fresh
       window.location.reload();
@@ -186,22 +222,38 @@ const Sidebar = () => {
       <div className="flex-1 p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-medium text-gray-300 uppercase tracking-wider">Recent Sessions</h3>
-          <span className="text-xs bg-dark-600 text-gray-400 px-2 py-1 rounded-full">1</span>
+          <span className="text-xs bg-dark-600 text-gray-400 px-2 py-1 rounded-full">{sessions.length}</span>
         </div>
         <ul className="space-y-2 mb-6">
-          <li className="bg-dark-600/50 hover:bg-dark-600 text-deepseek-300 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 border border-dark-500/50 hover:border-deepseek-500/50">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-deepseek-500/20 rounded-lg flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-deepseek-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                </svg>
+          {sessions.map((session) => (
+            <li key={session.id} className={`${session.active ? 'bg-deepseek-600/20 border-deepseek-500/50' : 'bg-dark-600/50 hover:bg-dark-600'} text-deepseek-300 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 border border-dark-500/50 hover:border-deepseek-500/50 group`}>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-deepseek-500/20 rounded-lg flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-deepseek-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">{session.title}</p>
+                  <p className="text-xs text-gray-400">{session.timestamp}</p>
+                </div>
+                {!session.active && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteSpecificSession(session.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-opacity"
+                    title="Delete session"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                  </button>
+                )}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">Research Session 1</p>
-                <p className="text-xs text-gray-400">Just now</p>
-              </div>
-            </div>
-          </li>
+            </li>
+          ))}
         </ul>
       </div>
 
@@ -250,7 +302,7 @@ const Sidebar = () => {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
             </svg>
-            <span className="text-sm">Delete Session</span>
+            <span className="text-sm">Delete Current Session</span>
           </button>
         </div>
       </div>

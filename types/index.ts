@@ -7,6 +7,13 @@ export interface Settings {
   temperature: number;
   maxTokens: number;
   topP: number;
+  mcpTools?: {
+    codAnalysis: boolean;
+    tavilySearch: boolean;
+    enhancedResearch: boolean;
+    memoryStore: boolean;
+    verificationAnalysis: boolean;
+  };
 }
 
 export interface Thread {
